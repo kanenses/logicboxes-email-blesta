@@ -11,14 +11,14 @@ trait ServiceProvisioningTrait
         $vars = (array)$vars;
         $fields = new ModuleFields();
 
-        $domain = $fields->label('Domínio de email', 'email_domain');
+        $domain = $fields->label(Language::_('LogicboxesEmail.email_domain', true), 'email_domain');
         $domain->attach($fields->fieldText(
             'email_domain',
             $vars['email_domain'] ?? ($vars['domain'] ?? ''),
             [
                 'id' => 'email_domain',
                 'class' => 'form-control',
-                'placeholder' => 'empresa.pt'
+                'placeholder' => Language::_('LogicboxesEmail.provision.domain_placeholder', true)
             ]
         ));
 
@@ -33,7 +33,7 @@ trait ServiceProvisioningTrait
         $fields = new ModuleFields();
         $domain = $fields->label(Language::_('LogicboxesEmail.email_domain', true), 'email_domain');
         $domain->attach($fields->fieldText('email_domain', $vars['email_domain'] ?? ($vars['domain'] ?? ''), [
-            'id' => 'email_domain', 'class' => 'form-control', 'placeholder' => 'example.com'
+            'id' => 'email_domain', 'class' => 'form-control', 'placeholder' => Language::_('LogicboxesEmail.provision.domain_placeholder', true)
         ]));
         $fields->setField($domain);
         return $fields;
