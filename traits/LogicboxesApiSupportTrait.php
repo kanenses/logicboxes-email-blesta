@@ -119,7 +119,7 @@ trait LogicboxesApiSupportTrait
             $message = $result->message ?? $result->error ?? $result->actionstatusdesc ?? null;
             if ($message !== null && $message !== '') return (string)$message;
             $code = $result->errorCode ?? $result->errorcode ?? null;
-            if ($code !== null && $code !== '') return 'Erro devolvido pela LogicBoxes (' . (string)$code . ').';
+            if ($code !== null && $code !== '') return sprintf(Language::_('LogicboxesEmail.api.error_code', true), (string)$code);
         }
         $error = $response->errors();
         if (is_object($error)) return (string)($error->message ?? $error->error ?? $error->actionstatusdesc ?? Language::_('LogicboxesEmail.api.generic_error', true));
