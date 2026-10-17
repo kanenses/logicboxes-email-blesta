@@ -1210,7 +1210,7 @@ class LogicboxesEmail extends Module
             $csrfPanel = $this->Form->getCsrfToken();
             $output .= '<section class="logicboxes-email-control-panel">';
             $output .= '<h3>Email control panel</h3>';
-            $output .= '<p>Manage mailboxes, storage allocation and email settings in the provider control panel.</p>';
+            $output .= '<p>Manage mailboxes, storage allocation and email settings in the provider control panel.</p><br>';
             if ($panelLaunchUrl !== null) {
                 // The public ResellerClub WHMCS module opens this exact servlet using
                 // a GET URL; the service-name selects the mail hosting panel.
@@ -1225,29 +1225,11 @@ class LogicboxesEmail extends Module
                     $output .= '<input type="hidden" name="_csrf_token" value="' . $escapePanel($csrfPanel) . '">';
                     $output .= '<input type="hidden" name="email_action" value="manage_panel">';
                     $output .= '<input type="hidden" name="panel_target" value="' . $panelTargetKey . '">';
-                    $output .= '<button type="submit" class="btn btn-default">' . $escapePanel($panelButtonLabel) . '</button></form>';
+                    $output .= '<button type="submit" class="btn btn-primary">' . $escapePanel($panelButtonLabel) . '</button></form>';
                 }
             }
             $output .= '</section>';
 
-            // OrderBox-style purchased-license deletion dialog. This deletes unused
-            // purchased licences, not individual mailbox users, and is non-refundable.
-            $output .= '<section class="logicboxes-email-delete-licenses" style="margin-top:18px;">';
-            $output .= '<button type="button" class="btn btn-default" onclick="document.getElementById(&quot;logicboxesDeleteLicensesModal&quot;).style.display=&quot;block&quot;">Delete Email Account(s)</button>';
-            $output .= '<div id="logicboxesDeleteLicensesModal" role="dialog" aria-modal="true" aria-labelledby="logicboxesDeleteLicensesTitle" style="display:none;position:fixed;z-index:99999;inset:0;background:rgba(0,0,0,.55);padding:8vh 12px 12px;overflow:auto;">';
-            $output .= '<div style="max-width:560px;margin:0 auto;background:#fff;color:#333;border:1px solid #aaa;border-radius:7px;box-shadow:0 8px 28px rgba(0,0,0,.35);overflow:hidden;">';
-            $output .= '<div style="background:#f2f2f2;padding:12px 16px;border-bottom:1px solid #ddd;"><button type="button" aria-label="Fechar" onclick="document.getElementById(&quot;logicboxesDeleteLicensesModal&quot;).style.display=&quot;none&quot;" style="float:right;border:0;background:transparent;font-size:20px;line-height:1;">&times;</button><strong id="logicboxesDeleteLicensesTitle">Delete Email Account(s)</strong><div>' . $escapePanel($domain) . '</div></div>';
-            $output .= '<form method="post" style="padding:16px;">';
-            $output .= '<input type="hidden" name="_csrf_token" value="' . $escapePanel($csrfPanel) . '"><input type="hidden" name="email_action" value="delete_licenses">';
-            $output .= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;align-items:center;">';
-            $output .= '<div><strong>Purchased Accounts</strong></div><div>' . ($purchasedLicenses === null ? 'Indisponível' : $escapePanel($purchasedLicenses)) . '</div>';
-            $output .= '<div><strong>Currently Used</strong></div><div>' . $escapePanel($usedLicenses) . '</div>';
-            $output .= '<label for="logicboxesAccountsToDelete"><strong>Accounts to be deleted</strong></label><div><input id="logicboxesAccountsToDelete" type="number" name="accounts_to_delete" min="1" max="' . $escapePanel($unusedLicenses) . '" required ' . ($unusedLicenses < 1 ? 'disabled' : '') . ' style="width:100%;" value="' . ($unusedLicenses > 0 ? '1' : '') . '"></div>';
-            $output .= '</div><p style="margin-top:18px;color:#555;">Deleting email accounts will not result in a refund. Licenças em utilização não podem ser removidas aqui; elimina primeiro as mailboxes no painel de email.</p>';
-            $output .= '<div style="text-align:right;margin-top:16px;"><button type="button" class="btn btn-default" onclick="document.getElementById(&quot;logicboxesDeleteLicensesModal&quot;).style.display=&quot;none&quot;">Cancelar</button> <button type="submit" class="btn btn-danger" ' . ($unusedLicenses < 1 || $purchasedLicenses === null ? 'disabled' : '') . ' onclick="return confirm(&quot;Tens a certeza de que queres eliminar licenças contratadas? Esta operação não tem reembolso.&quot;);">Delete Now</button></div>';
-            $output .= '</form></div></div>';
-            $output .= '<script>(function(){var m=document.getElementById("logicboxesDeleteLicensesModal");if(m){m.addEventListener("click",function(e){if(e.target===m)m.style.display="none";});document.addEventListener("keydown",function(e){if(e.key==="Escape")m.style.display="none";});}})();</script>';
-            $output .= '</section>';
         }
 
         return $output;
@@ -2140,13 +2122,61 @@ $this->logEmailDiagnostic(
         return $this->changeOrderStatus($package, $service, 'unsuspend');
     }
 
-    public function cancelService($package, $service, $parent_package = null, $parent_service = null)
-    {
-        // Blesta cancellation may be scheduled for the end of the billing term.
-        // Do not immediately delete a paid third-party order here.
-        return null;
-    }
+	// cancel service
+	public function cancelService($package, $service, $parent_package = null, $parent_service = null)
+	{
+		$fields = $this->serviceFieldsToObject($service->fields);
+	
+		if (empty($fields->email_order_id)) {
+			$this->setModuleError(
+				'order_id',
+				'The LogicBoxes order ID is missing from this service.'
+			);
+			return;
+		}
+	
+		$row = $this->getModuleRow($package->module_row);
+	
+		if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
+			$this->setModuleError(
+				'cancel',
+				'LogicBoxes reseller credentials are missing.'
+			);
+			return;
+		}
+	
+		$api = $this->getLogicboxesApi(
+			$row->meta->reseller_id,
+			$row->meta->key,
+			($row->meta->sandbox ?? 'false') === 'true'
+		);
+	
+		$prefix = (
+			($fields->email_product ?? 'business_email') === 'enterprise_email'
+		) ? 'enterpriseemail/us' : 'eelite/us';
+	
+		$response = $api->submit(
+			$prefix . '/delete',
+			[
+				'order-id' => $fields->email_order_id
+			],
+			'POST'
+		);
+	
+		$this->logApiResponse($api, $response);
+	
+		if (!$this->isSuccessfulResponse($response)) {
+			$this->setModuleError(
+				'cancel',
+				$this->responseError($response)
+			);
+		}
+	
+		return null;
+	}
 
+	// renew services
+	
     public function renewService($package, $service, $parent_package = null, $parent_service = null)
     {
         $fields = $this->serviceFieldsToObject($service->fields);
