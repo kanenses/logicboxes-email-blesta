@@ -143,7 +143,7 @@ trait ServiceProvisioningTrait
 		        ['key' => 'email_storage_blocks', 'value' => (string)$storageBlocks, 'encrypted' => 0]
 		    ];
 		}
-		
+
         try {
             Loader::loadModels($this, ['Clients', 'Contacts']);
             $client = $this->Clients->get($vars['client_id'] ?? null);
@@ -523,7 +523,7 @@ $this->logEmailDiagnostic(
 	public function cancelService($package, $service, $parent_package = null, $parent_service = null)
 	{
 		$fields = $this->serviceFieldsToObject($service->fields);
-	
+
 		if (empty($fields->email_order_id)) {
 			$this->setModuleError(
 				'order_id',
@@ -531,9 +531,9 @@ $this->logEmailDiagnostic(
 			);
 			return;
 		}
-	
+
 		$row = $this->getModuleRow($package->module_row);
-	
+
 		if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
 			$this->setModuleError(
 				'cancel',
@@ -541,17 +541,17 @@ $this->logEmailDiagnostic(
 			);
 			return;
 		}
-	
+
 		$api = $this->getLogicboxesApi(
 			$row->meta->reseller_id,
 			$row->meta->key,
 			($row->meta->sandbox ?? 'false') === 'true'
 		);
-	
+
 		$prefix = (
 			($fields->email_product ?? 'business_email') === 'enterprise_email'
 		) ? 'enterpriseemail/us' : 'eelite/us';
-	
+
 		$response = $api->submit(
 			$prefix . '/delete',
 			[
@@ -559,16 +559,16 @@ $this->logEmailDiagnostic(
 			],
 			'POST'
 		);
-	
+
 		$this->logApiResponse($api, $response);
-	
+
 		if (!$this->isSuccessfulResponse($response)) {
 			$this->setModuleError(
 				'cancel',
 				$this->responseError($response)
 			);
 		}
-	
+
 		return null;
 	}
 
