@@ -10,14 +10,14 @@ foreach ($records as $record) {
     foreach (['type', 'record-type', 'record_type', 'recordType', 'dns-type', 'dns_type'] as $key) {
         if (isset($record[$key]) && is_scalar($record[$key])) { $type = strtoupper(trim((string)$record[$key])); break; }
     }
-    if ($type === '') $type = Language::_('LogicboxesEmail.dns.other', true);
+    if ($type === '') $type = $this->_('LogicboxesEmail.dns.other', true);
     $grouped[$type][] = $record;
 }
 ksort($grouped);
 ?>
 <div class="logicboxes-email-dns-setup">
-    <h3><?= $e(sprintf(Language::_('LogicboxesEmail.dns.title', true), $domain ?? '')) ?></h3>
-    <p><?= $e(Language::_('LogicboxesEmail.dns.description', true)) ?></p>
+    <h3><?= $e(sprintf($this->_('LogicboxesEmail.dns.title', true), $domain ?? '')) ?></h3>
+    <p><?= $e($this->_('LogicboxesEmail.dns.description', true)) ?></p>
 
     <?php if (!empty($error)): ?>
         <div class="alert alert-warning"><?= $e($error) ?></div>
@@ -25,26 +25,26 @@ ksort($grouped);
 
     <details class="panel panel-default" open>
         <summary class="panel-heading" style="cursor:pointer; font-weight:600;">
-            <?= $e(Language::_('LogicboxesEmail.dns.nameservers_title', true)) ?>
+            <?= $e($this->_('LogicboxesEmail.dns.nameservers_title', true)) ?>
         </summary>
         <div class="panel-body" style="padding:15px;">
-            <p><?= $e(Language::_('LogicboxesEmail.dns.nameservers_intro', true)) ?></p>
+            <p><?= $e($this->_('LogicboxesEmail.dns.nameservers_intro', true)) ?></p>
             <ul>
                 <li><code>ns1.kanumhost.com</code></li>
                 <li><code>ns2.kanumhost.com</code></li>
                 <li><code>ns3.kanumhost.com</code></li>
                 <li><code>ns4.kanumhost.com</code></li>
             </ul>
-            <p><?= $e(Language::_('LogicboxesEmail.dns.nameservers_instructions', true)) ?></p>
+            <p><?= $e($this->_('LogicboxesEmail.dns.nameservers_instructions', true)) ?></p>
         </div>
     </details>
 
     <details class="panel panel-default" open>
-        <summary class="panel-heading" style="cursor:pointer; font-weight:600;"><?= $e(Language::_('LogicboxesEmail.dns.records_title', true)) ?></summary>
+        <summary class="panel-heading" style="cursor:pointer; font-weight:600;"><?= $e($this->_('LogicboxesEmail.dns.records_title', true)) ?></summary>
         <div class="panel-body" style="padding:15px;">
-            <p><?= $e(sprintf(Language::_('LogicboxesEmail.dns.records_instructions', true), $domain ?? '')) ?></p>
+            <p><?= $e(sprintf($this->_('LogicboxesEmail.dns.records_instructions', true), $domain ?? '')) ?></p>
             <?php if (!$records): ?>
-                <p><?= $e(Language::_('LogicboxesEmail.dns.no_records', true)) ?></p>
+                <p><?= $e($this->_('LogicboxesEmail.dns.no_records', true)) ?></p>
             <?php else: ?>
                 <?php foreach ($grouped as $type => $items): ?>
                     <details style="margin:10px 0;" open>
@@ -52,8 +52,8 @@ ksort($grouped);
                         <div class="table-responsive" style="margin-top:10px;">
                             <table class="table table-striped table-bordered">
                                 <thead><tr>
-                                    <th><?= $e(Language::_('LogicboxesEmail.dns.field', true)) ?></th>
-                                    <th><?= $e(Language::_('LogicboxesEmail.dns.value', true)) ?></th>
+                                    <th><?= $e($this->_('LogicboxesEmail.dns.field', true)) ?></th>
+                                    <th><?= $e($this->_('LogicboxesEmail.dns.value', true)) ?></th>
                                 </tr></thead>
                                 <tbody>
                                 <?php foreach ($items as $record): ?>
@@ -71,7 +71,7 @@ ksort($grouped);
                     </details>
                 <?php endforeach; ?>
             <?php endif; ?>
-            <div class="alert alert-info"><?= $e(Language::_('LogicboxesEmail.dns.provider_note', true)) ?></div>
+            <div class="alert alert-info"><?= $e($this->_('LogicboxesEmail.dns.provider_note', true)) ?></div>
         </div>
     </details>
 </div>
