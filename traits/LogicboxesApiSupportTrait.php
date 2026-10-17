@@ -309,7 +309,7 @@ trait LogicboxesApiSupportTrait
 
     private function getLogicboxesApi($resellerId, $key, $sandbox)
     {
-        Loader::load(dirname(__FILE__) . DS . 'apis' . DS . 'logicboxes_api.php');
+        Loader::load(dirname(__DIR__) . DS . 'apis' . DS . 'logicboxes_api.php');
         return new LogicboxesApi($resellerId, $key, $sandbox);
     }
 
