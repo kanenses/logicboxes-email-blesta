@@ -62,11 +62,11 @@ See `docs/API-MAPPING.md`.
 PHP syntax is checked in this package. Always validate create/delete mailbox, DNS retrieval, license reduction and panel SSO against your OrderBox demo/live account before enabling for customers.
 
 Add Form for forward, between lines 1232 and 1233 and, betwee;
-            $output .= '</section>';
+           
  
- add form above here
- 
-        }
+ $output .= '</section>';    
+ add form above here    
+ }
 
 
             // OrderBox-style purchased-license deletion dialog. This deletes unused
