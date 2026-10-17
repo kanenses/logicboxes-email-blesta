@@ -1,0 +1,115 @@
+<?php
+$e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); };
+?>
+<div class="logicboxes-email-client">
+    <h3>Email accounts</h3>
+    <p>Manage mailbox accounts and forwarding-only addresses for this service.</p>
+    <?php if (!empty($message)) { ?><div class="alert alert-success"><?php echo $e($message); ?></div><?php } ?>
+    <?php if (!empty($error)) { ?><div class="alert alert-danger"><?php echo $e($error); ?></div><?php } ?>
+
+    <h4>Existing accounts</h4>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Email address</th><th>Status</th><th>Type</th><th>Usage / Quota</th><th>Actions</th></tr></thead>
+            <tbody>
+            <?php if (empty($users)) { ?>
+                <tr><td colspan="5">No accounts were returned by the provider.</td></tr>
+            <?php } else { foreach ($users as $user) {
+                $email = $user['emailAddress'] ?? $user['user.email'] ?? $user['email'] ?? $user['username'] ?? $user['user.username'] ?? '';
+                $status = $user['status'] ?? $user['user.status'] ?? '—';
+                $type = $user['accountType'] ?? $user['accounttype'] ?? $user['user.accounttype'] ?? '—';
+
+                $used = $user['quotaUsed'] ?? $user['quotaused'] ?? $user['usedquota'] ?? $user['used-quota'] ?? $user['used_quota'] ?? $user['user.quotaUsed'] ?? $user['user.quotaused'] ?? $user['user.usedquota'] ?? '';
+                $quota = $user['quotaLimit'] ?? $user['quotalimit'] ?? $user['storagequota'] ?? $user['storage-quota'] ?? $user['storage_quota'] ?? $user['quota'] ?? $user['user.quotaLimit'] ?? $user['user.quotalimit'] ?? $user['user.storagequota'] ?? '';
+
+                // The API quota values are in KB. Convert using base 1024.
+                $formatQuotaKb = function ($value) {
+                    if ($value === '' || !is_numeric($value)) {
+                        return '—';
+                    }
+
+                    $kb = (float)$value;
+                    if ($kb >= 1048576) {
+                        return number_format($kb / 1048576, 2, ',', '.') . ' GB';
+                    }
+                    if ($kb >= 1024) {
+                        return number_format($kb / 1024, 2, ',', '.') . ' MB';
+                    }
+                    return number_format($kb, 0, ',', '.') . ' KB';
+                };
+
+                $usedFormatted = $formatQuotaKb($used);
+                $quotaFormatted = $formatQuotaKb($quota);
+                $usage = $usedFormatted . ($quota !== '' && is_numeric($quota) ? ' / ' . $quotaFormatted : '');
+            ?>
+                <tr>
+                    <td><?php echo $e($email ?: '—'); ?></td>
+                    <td><?php echo $e($status); ?></td>
+                    <td><?php echo $e($type); ?></td>
+                    <td><?php echo $e($usage ?: '—'); ?></td>
+                    <td><?php if ($email) { echo $this->Form->create(null, ['method' => 'post']); ?>
+                        <input type="hidden" name="email_action" value="delete_user">
+                        <input type="hidden" name="email" value="<?php echo $e($email); ?>">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete <?php echo $e($email); ?>? This cannot be undone.');">Delete</button>
+                    <?php echo $this->Form->end(); } ?></td>
+                </tr>
+            <?php }} ?>
+            </tbody>
+        </table>
+    </div>
+
+    <h4>Create mailbox</h4>
+    <p>Purchased mailbox capacity: <?php echo (int)$max_mailboxes; ?>. A mailbox can be created only if there is unused capacity.</p>
+    <?php echo $this->Form->create(null, ['method' => 'post']); ?>
+        <input type="hidden" name="email_action" value="add_mailbox">
+        <div class="form-group">
+            <label for="local_part">Email username</label>
+            <div class="input-group">
+                <input class="form-control" id="local_part" name="local_part" required pattern="[A-Za-z0-9._%+-]+">
+                <span class="input-group-addon">@<?php echo $e($domain); ?></span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 form-group"><label for="first_name">First name</label><input class="form-control" id="first_name" name="first_name" required></div>
+            <div class="col-md-6 form-group"><label for="last_name">Last name</label><input class="form-control" id="last_name" name="last_name" required></div>
+        </div>
+        <div class="form-group"><label for="password">Initial password</label><input class="form-control" id="password" name="password" type="password" minlength="8" required autocomplete="new-password"></div>
+        <div class="form-group"><label for="notification_email">Alternate / notification email</label><input class="form-control" id="notification_email" name="notification_email" type="email" required></div>
+        <div class="row">
+            <div class="col-md-6 form-group"><label for="country_code">Country code (ISO 3166-1 alpha-2)</label><input class="form-control" id="country_code" name="country_code" value="PT" maxlength="2" required></div>
+            <div class="col-md-6 form-group">
+                <label for="language_code">Language</label>
+                <select class="form-control" id="language_code" name="language_code">
+                    <option value="en">English</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="es">Spanish</option>
+                    <option value="zh-CN">Chinese (Simplified)</option>
+                    <option value="tr">Turkish</option>
+                    <option value="ru">Russian</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn btn-primary" type="submit">Create mailbox</button>
+    <?php echo $this->Form->end(); ?>
+
+    <hr>
+
+    <h4>Create forwarding-only address</h4>
+    <p>Forwarding-only addresses do not consume a full mailbox license.</p>
+    <?php echo $this->Form->create(null, ['method' => 'post']); ?>
+        <input type="hidden" name="email_action" value="add_forward">
+        <div class="form-group">
+            <label for="forward_local_part">Forward address username</label>
+            <div class="input-group">
+                <input class="form-control" id="forward_local_part" name="forward_local_part" required pattern="[A-Za-z0-9._%+-]+">
+                <span class="input-group-addon">@<?php echo $e($domain); ?></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="forwards">Destination email addresses</label>
+            <textarea class="form-control" id="forwards" name="forwards" rows="3" required placeholder="one@example.com, two@example.com"></textarea>
+            <span class="help-block">Separate multiple destinations with commas, semicolons or new lines.</span>
+        </div>
+        <button class="btn btn-default" type="submit">Create forward-only address</button>
+    <?php echo $this->Form->end(); ?>
+</div>

@@ -1,0 +1,6 @@
+{
+  "name": "kanumhost/logicboxes-email",
+  "description": "KanumHost LogicBoxes Email module for Blesta 6.0.2",
+  "license": "proprietary",
+  "type": "blesta-module"
+}

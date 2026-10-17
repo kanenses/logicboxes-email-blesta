@@ -1,0 +1,34 @@
+{
+  "version": "0.5.8",
+  "type": "module",
+  "name": "KanumHost LogicBoxes Email",
+  "description": "KanumHost Email Hosting integration for LogicBoxes HTTP API",
+  "authors": [
+    {
+      "name": "KanumHost"
+    }
+  ],
+  "package": {
+    "name_key": "email_product"
+  },
+  "service": {
+    "name_key": "email_domain"
+  },
+  "module": {
+    "row": "LogicboxesEmail.module_row",
+    "rows": "LogicboxesEmail.module_row_plural",
+    "row_key": "account_name"
+  },
+  "email_tags": {
+    "module": [],
+    "package": [],
+    "service": [
+      "email_domain",
+      "email_product",
+      "email_order_id",
+      "email_customer_id",
+      "email_accounts",
+      "email_storage_blocks"
+    ]
+  }
+}

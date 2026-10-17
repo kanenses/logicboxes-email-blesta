@@ -1,0 +1,84 @@
+<?php
+$e = static function ($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+};
+$nameservers = isset($nameservers) && is_array($nameservers) ? $nameservers : [];
+$records = isset($records) && is_array($records) ? $records : [];
+$grouped = [];
+foreach ($records as $record) {
+    $record = is_object($record) ? (array)$record : (array)$record;
+    $type = '';
+    foreach (['type', 'record-type', 'record_type', 'recordType', 'dns-type', 'dns_type'] as $key) {
+        if (isset($record[$key]) && is_scalar($record[$key])) { $type = strtoupper(trim((string)$record[$key])); break; }
+    }
+    if ($type === '') $type = 'OUTROS';
+    $grouped[$type][] = $record;
+}
+ksort($grouped);
+?>
+<div class="logicboxes-email-dns-setup">
+    <h3>Configuração DNS — <?= $e($domain ?? '') ?></h3>
+    <p>Consulte os servidores de nomes e os registos necessários para configurar o serviço de email. As alterações devem ser efetuadas no fornecedor que gere a zona DNS do domínio.</p>
+
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-warning"><?= $e($error) ?></div>
+    <?php endif; ?>
+
+
+<details class="panel panel-default" open>
+    <summary class="panel-heading" style="cursor:pointer; font-weight:600;">
+        Servidores de nomes (Name Servers)
+    </summary>
+
+    <div class="panel-body" style="padding:15px;">
+        <p>Servidores de nomes da KanumHost:</p>
+
+        <ul>
+            <li><code>ns1.kanumhost.com</code></li>
+            <li><code>ns2.kanumhost.com</code></li>
+            <li><code>ns3.kanumhost.com</code></li>
+            <li><code>ns4.kanumhost.com</code></li>
+        </ul>
+
+        <p>
+            Para utilizar estes servidores, altere os nameservers
+            nas definições do domínio junto do respetivo registrador.
+            Não basta adicionar estes nomes como registos DNS.
+        </p>
+    </div>
+</details>
+
+
+    <details class="panel panel-default" open>
+        <summary class="panel-heading" style="cursor:pointer; font-weight:600;">Registos DNS</summary>
+        <div class="panel-body" style="padding:15px;">
+            <p>Adicione estes registos à zona DNS responsável por <strong><?= $e($domain ?? '') ?></strong>. Não substitua registos existentes sem confirmar primeiro a sua finalidade.</p>
+            <?php if (!$records): ?>
+                <p>Não foram devolvidos registos DNS pela API.</p>
+            <?php else: ?>
+                <?php foreach ($grouped as $type => $items): ?>
+                    <details style="margin:10px 0;" open>
+                        <summary style="cursor:pointer; font-weight:600;"><?= $e($type) ?></summary>
+                        <div class="table-responsive" style="margin-top:10px;">
+                            <table class="table table-striped table-bordered">
+                                <thead><tr><th>Campo</th><th>Valor</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($items as $record): ?>
+                                    <?php foreach ($record as $key => $value): ?>
+                                        <?php if (is_scalar($value) && trim((string)$value) !== ''): ?>
+                                            <tr><th><?= $e(ucwords(str_replace(['-', '_'], ' ', (string)$key))) ?></th><td><code><?= $e($value) ?></code></td></tr>
+                                        <?php elseif (is_array($value) || is_object($value)): ?>
+                                            <tr><th><?= $e(ucwords(str_replace(['-', '_'], ' ', (string)$key))) ?></th><td><code><?= $e(json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></code></td></tr>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <div class="alert alert-info">Esta página apresenta os registos devolvidos pelo fornecedor, mas não altera automaticamente a zona DNS. A propagação das alterações pode demorar algum tempo.</div>
+        </div>
+    </details>
+</div>
