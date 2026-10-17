@@ -134,17 +134,17 @@ trait ServiceTabsTrait
         $e = static function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); };
         $csrf = '';
         try { Loader::loadHelpers($this, ['Form']); $csrf = $this->Form->getCsrfToken(); } catch (Throwable $ignore) {}
-        $html = '<section class="logicboxes-email-import"><h3>Importar encomenda existente da OrderBox</h3>';
-        $html .= '<p>Associa uma encomenda que já existe na tua conta OrderBox a este serviço Blesta. Esta ação apenas consulta a OrderBox; não compra nem altera licenças.</p>';
+        $html = '<section class="logicboxes-email-import"><h3>' . Language::_('LogicboxesEmail.import.title', true) . '</h3>';
+        $html .= '<p>' . Language::_('LogicboxesEmail.import.description', true) . '</p>';
         if ($message) $html .= '<div class="alert alert-success">' . $e($message) . '</div>';
         if ($error) $html .= '<div class="alert alert-danger">' . $e($error) . '</div>';
         $html .= '<form method="post">';
         $html .= '<input type="hidden" name="_csrf_token" value="' . $e($csrf) . '">';
-        $html .= '<div class="form-group"><label for="logicboxes_email_order_id">ID da encomenda OrderBox</label><input class="form-control" id="logicboxes_email_order_id" name="order_id" value="' . $e($orderIdInput) . '" required inputmode="numeric"></div>';
-        $html .= '<div class="form-group"><label for="logicboxes_email_product">Produto</label><select class="form-control" id="logicboxes_email_product" name="email_product">';
-        $html .= '<option value="business_email"' . ($productInput === 'business_email' ? ' selected' : '') . >' . Language::_('LogicboxesEmail.business_email', true) . '</option>';
-        $html .= '<option value="enterprise_email"' . ($productInput === 'enterprise_email' ? ' selected' : '') . >' . Language::_('LogicboxesEmail.enterprise_email', true) . '</option></select></div>';
-        $html .= '<button class="btn btn-primary" type="submit" name="import_existing_order" value="1">Validar e associar encomenda</button></form></section>';
+        $html .= '<div class="form-group"><label for="logicboxes_email_order_id">' . Language::_('LogicboxesEmail.import.order_id', true) . '</label><input class="form-control" id="logicboxes_email_order_id" name="order_id" value="' . $e($orderIdInput) . '" required inputmode="numeric"></div>';
+        $html .= '<div class="form-group"><label for="logicboxes_email_product">' . Language::_('LogicboxesEmail.import.product', true) . '</label><select class="form-control" id="logicboxes_email_product" name="email_product">';
+        $html .= '<option value="business_email"' . ($productInput === 'business_email' ? ' selected' : '') . '>' . Language::_('LogicboxesEmail.business_email', true) . '</option>';
+        $html .= '<option value="enterprise_email"' . ($productInput === 'enterprise_email' ? ' selected' : '') . '>' . Language::_('LogicboxesEmail.enterprise_email', true) . '</option></select></div>';
+        $html .= '<button class="btn btn-primary" type="submit" name="import_existing_order" value="1">' . Language::_('LogicboxesEmail.import.button', true) . '</button></form></section>';
         return $html;
     }
 
@@ -477,7 +477,7 @@ trait ServiceTabsTrait
                 // The form that requested the token opens in a new tab; send that tab straight to the panel.
                 $output .= '<script>window.location.replace(' . json_encode($panelLaunchUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');</script>';
                 $output .= '<p>' . Language::_('LogicboxesEmail.panel.token_notice', true) . '</p>';
-                $output .= '<a class="btn btn-primary logicboxes-email-panel-launch" href="' . $escapePanel($panelLaunchUrl) . '" target="_blank" rel="noopener noreferrer">Continue to email control panel</a>';
+                $output .= '<a class="btn btn-primary logicboxes-email-panel-launch" href="' . $escapePanel($panelLaunchUrl) . '" target="_blank" rel="noopener noreferrer">' . Language::_('LogicboxesEmail.panel.continue', true) . '</a>';
             } else {
                 $panelButtons = ['email' => Language::_('LogicboxesEmail.panel.open_email', true), 'dns' => Language::_('LogicboxesEmail.panel.manage_dns', true)];
                 foreach ($panelButtons as $panelTargetKey => $panelButtonLabel) {
@@ -553,7 +553,7 @@ trait ServiceTabsTrait
         $html .= '<h3>' . Language::_('LogicboxesEmail.manage.title', true) . '</h3>';
         $html .= '<div class="table-responsive"><table class="table table-striped">';
         $html .= '<tbody>';
-        $html .= '<tr><th>Domínio</th><td>' . $e($domain ?: '—') . '</td></tr>';
+        $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.domain', true) . '</th><td>' . $e($domain ?: '—') . '</td></tr>';
         $html .= '</tbody></table></div>';
 
         if (!$orderId || !$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
@@ -693,7 +693,7 @@ trait ServiceTabsTrait
             }
         } catch (Throwable $exception) {
             $this->logEmailDiagnostic('Mailbox list exception for service ' . (int)($service->id ?? 0) . ': ' . $exception->getMessage());
-            $html .= '<div class="alert alert-warning">We could not retrieve the mailbox list from the email provider. Please contact support if the problem persists.</div>';
+            $html .= '<div class="alert alert-warning">' . Language::_('LogicboxesEmail.manage.provider_error_persistent', true) . '</div>';
         }
 
         $html .= '<p class="small text-muted">' . Language::_('LogicboxesEmail.manage.capacity_note', true) . '</p>';
