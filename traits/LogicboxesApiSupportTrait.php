@@ -10,7 +10,7 @@ trait LogicboxesApiSupportTrait
     {
         $fields = $this->serviceFieldsToObject($service->fields);
         if (empty($fields->email_order_id)) {
-            $this->setModuleError('order_id', 'The LogicBoxes order ID is missing from this service.');
+            $this->setModuleError('order_id', Language::_('LogicboxesEmail.provision.order_id_missing', true));
             return;
         }
         $row = $this->getModuleRow($package->module_row);
@@ -122,8 +122,8 @@ trait LogicboxesApiSupportTrait
             if ($code !== null && $code !== '') return 'Erro devolvido pela LogicBoxes (' . (string)$code . ').';
         }
         $error = $response->errors();
-        if (is_object($error)) return (string)($error->message ?? $error->error ?? $error->actionstatusdesc ?? 'LogicBoxes returned an error.');
-        return 'LogicBoxes returned an invalid or unsuccessful response: ' . substr((string)$response->raw(), 0, 500);
+        if (is_object($error)) return (string)($error->message ?? $error->error ?? $error->actionstatusdesc ?? Language::_('LogicboxesEmail.api.generic_error', true));
+        return sprintf(Language::_('LogicboxesEmail.api.invalid_response', true), substr((string)$response->raw(), 0, 500));
     }
 
     private function setModuleError($key, $message)
