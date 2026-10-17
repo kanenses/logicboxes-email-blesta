@@ -180,16 +180,18 @@ class LogicboxesEmail extends Module
                         // getAllWithService(), so fall back to this client's closed invoices
                         // and verify the invoice line item actually references this service.
                         $relatedInvoices = [];
+                        $usedServiceSpecificQuery = false;
                         if (method_exists($this->Invoices, 'getAllWithService')) {
                             $relatedInvoices = $this->Invoices->getAllWithService($serviceId, $clientId ?: null, 'closed');
-                        }
-                        if (is_object($relatedInvoices)) {
-                            foreach (['invoices', 'results', 'records'] as $property) {
-                                if (isset($relatedInvoices->{$property}) && is_array($relatedInvoices->{$property})) {
-                                    $relatedInvoices = $relatedInvoices->{$property};
-                                    break;
+                            if (is_object($relatedInvoices)) {
+                                foreach (['invoices', 'results', 'records'] as $property) {
+                                    if (isset($relatedInvoices->{$property}) && is_array($relatedInvoices->{$property})) {
+                                        $relatedInvoices = $relatedInvoices->{$property};
+                                        break;
+                                    }
                                 }
                             }
+                            $usedServiceSpecificQuery = is_array($relatedInvoices) && count($relatedInvoices) > 0;
                         }
                         if (!is_array($relatedInvoices) || count($relatedInvoices) === 0) {
                             $relatedInvoices = $this->Invoices->getAll($clientId ?: null, 'closed');
@@ -211,12 +213,7 @@ class LogicboxesEmail extends Module
                             if ($invoiceId < 1) continue;
 
                             // For the service-specific query, the association itself is enough.
-                            $isRelated = false;
-                            if (method_exists($this->Invoices, 'getAllWithService')
-                                && isset($invoice->id)
-                                && is_array($this->Invoices->getAllWithService($serviceId, $clientId ?: null, 'closed'))) {
-                                $isRelated = true;
-                            }
+                            $isRelated = $usedServiceSpecificQuery;
                             // Confirm relation against actual invoice lines for fallback results.
                             if (!$isRelated) {
                                 foreach ((array)$this->Invoices->getLineItems($invoiceId) as $line) {
