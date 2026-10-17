@@ -170,3 +170,4 @@ $lang['LogicboxesEmail.dns.other'] = 'Other';
 $lang['LogicboxesEmail.provision.domain_placeholder'] = 'example.com';
 $lang['LogicboxesEmail.api.generic_error'] = 'LogicBoxes returned an error.';
 $lang['LogicboxesEmail.api.invalid_response'] = 'LogicBoxes returned an invalid or unsuccessful response: %s';
+$lang['LogicboxesEmail.api.error_code'] = 'LogicBoxes returned error code %s.';
