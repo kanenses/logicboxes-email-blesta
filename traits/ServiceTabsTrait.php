@@ -9,17 +9,17 @@ trait ServiceTabsTrait
     public function getClientServiceTabs($service)
     {
         return [
-            'tabEmailAccounts' => ['name' => 'Email accounts'],
-            'tabDnsSetup' => ['name' => 'DNS configuration']
+            'tabEmailAccounts' => ['name' => Language::_('LogicboxesEmail.tab_email_accounts', true)],
+            'tabDnsSetup' => ['name' => Language::_('LogicboxesEmail.tab_dns_setup', true)]
         ];
     }
 
     public function getAdminServiceTabs($service)
     {
         return [
-            'tabEmailAccounts' => 'Email accounts',
-            'tabDnsSetup' => 'DNS configuration',
-            'tabImportOrder' => 'Import OrderBox order'
+            'tabEmailAccounts' => Language::_('LogicboxesEmail.tab_email_accounts', true),
+            'tabDnsSetup' => Language::_('LogicboxesEmail.tab_dns_setup', true),
+            'tabImportOrder' => Language::_('LogicboxesEmail.tab_import_order', true)
         ];
     }
 
@@ -39,10 +39,10 @@ trait ServiceTabsTrait
         }
 
         if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
-            $error = 'A conta/API LogicBoxes não está configurada para este serviço.';
+            $error = Language::_('LogicboxesEmail.msg.api_not_configured', true);
         } elseif (!empty($post['import_existing_order'])) {
             if ($serviceId < 1 || $orderIdInput === '' || !ctype_digit($orderIdInput)) {
-                $error = 'Indica um ID de encomenda OrderBox válido.';
+                $error = Language::_('LogicboxesEmail.msg.order_id_invalid', true);
             } else {
                 try {
                     $api = $this->getLogicboxesApi($row->meta->reseller_id, $row->meta->key, ($row->meta->sandbox ?? 'false') === 'true');
@@ -50,14 +50,14 @@ trait ServiceTabsTrait
                     $response = $api->submit($prefix . '/details', ['order-id' => $orderIdInput], 'GET');
                     $this->logApiResponse($api, $response);
                     if (!$this->isSuccessfulResponse($response)) {
-                        $error = 'A OrderBox não confirmou essa encomenda: ' . $this->responseError($response);
+                        $error = sprintf(Language::_('LogicboxesEmail.msg.order_not_confirmed', true), $this->responseError($response));
                     } else {
                         $details = $response->response();
                         if (is_object($details) && isset($details->response)) $details = $details->response;
                         if (is_array($details) && isset($details['response'])) $details = $details['response'];
                         if (is_object($details)) $details = (array)$details;
                         if (!is_array($details) || !$details) {
-                            $error = 'A OrderBox devolveu uma resposta vazia; o serviço não foi alterado.';
+                            $error = Language::_('LogicboxesEmail.msg.order_empty', true);
                         } else {
                             $getVal = static function ($data, array $keys) {
                                 foreach ($keys as $key) {
@@ -76,13 +76,13 @@ trait ServiceTabsTrait
                             $productMismatch = ($productInput === 'enterprise_email' && $providerProductKey !== '' && strpos($providerProductKey, 'enterprise') === false)
                                 || ($productInput === 'business_email' && $providerProductKey !== '' && strpos($providerProductKey, 'enterprise') !== false);
                             if ($productMismatch) {
-                                $error = 'O produto selecionado não corresponde ao produto devolvido pela OrderBox (' . $providerProductKey . '). Escolhe o produto correto; o serviço não foi alterado.';
+                                $error = sprintf(Language::_('LogicboxesEmail.msg.order_product_mismatch', true), $providerProductKey);
                             } elseif ($domain === '') {
-                                $error = 'A resposta da OrderBox não contém o domínio da encomenda. O serviço não foi alterado.';
+                                $error = Language::_('LogicboxesEmail.msg.order_domain_missing', true);
                             } elseif (!is_numeric($accountsRaw) || (int)$accountsRaw < 1) {
-                                $error = 'A resposta da OrderBox não contém a quantidade contratada de mailboxes. O serviço não foi alterado.';
+                                $error = Language::_('LogicboxesEmail.msg.order_accounts_missing', true);
                             } elseif (!is_numeric($blocksRaw) || (int)$blocksRaw < 0) {
-                                $error = 'A resposta da OrderBox não contém a quantidade de armazenamento. O serviço não foi alterado.';
+                                $error = Language::_('LogicboxesEmail.msg.order_storage_missing', true);
                             } else {
                                 Loader::loadModels($this, ['Services']);
                                 $save = [
@@ -110,7 +110,7 @@ trait ServiceTabsTrait
                                     if ($result === false) $allSaved = false;
                                 }
                                 if (!$allSaved) {
-                                    $error = 'A OrderBox foi validada, mas o Blesta não confirmou a gravação de todos os campos. Verifica os campos do serviço antes de repetir.';
+                                    $error = Language::_('LogicboxesEmail.msg.order_save_failed', true);
                                     $this->logEmailDiagnostic('Import order ' . $orderIdInput . ' into Blesta service ' . $serviceId . ' had one or more editField failures.');
                                 } else {
                                     // Defer reconciliation to the scheduled task; do not issue a second
@@ -118,7 +118,7 @@ trait ServiceTabsTrait
                                     $this->Services->editField($serviceId, [
                                         'key' => 'email_sync_pending', 'value' => '1', 'encrypted' => 'false'
                                     ]);
-                                    $message = 'Encomenda OrderBox ' . $orderIdInput . ' associada ao serviço Blesta ' . $serviceId . '. Não foi criada nenhuma encomenda nova nem alterada qualquer licença.';
+                                    $message = sprintf(Language::_('LogicboxesEmail.msg.order_associated', true), $orderIdInput, $serviceId);
                                     $this->logEmailDiagnostic('Imported existing OrderBox order ' . $orderIdInput . ' into Blesta service ' . $serviceId . ' (product=' . $productInput . ', accounts=' . (int)$accountsRaw . ', storage_blocks=' . (int)$blocksRaw . ').');
                                 }
                             }
@@ -126,7 +126,7 @@ trait ServiceTabsTrait
                     }
                 } catch (Throwable $e) {
                     $this->logEmailDiagnostic('Import existing OrderBox order failed for Blesta service ' . $serviceId . ': ' . $e->getMessage());
-                    $error = 'Falha ao consultar/importar a encomenda OrderBox. Consulta o log do módulo para ver o erro.';
+                    $error = Language::_('LogicboxesEmail.msg.order_import_failed', true);
                 }
             }
         }
@@ -142,8 +142,8 @@ trait ServiceTabsTrait
         $html .= '<input type="hidden" name="_csrf_token" value="' . $e($csrf) . '">';
         $html .= '<div class="form-group"><label for="logicboxes_email_order_id">ID da encomenda OrderBox</label><input class="form-control" id="logicboxes_email_order_id" name="order_id" value="' . $e($orderIdInput) . '" required inputmode="numeric"></div>';
         $html .= '<div class="form-group"><label for="logicboxes_email_product">Produto</label><select class="form-control" id="logicboxes_email_product" name="email_product">';
-        $html .= '<option value="business_email"' . ($productInput === 'business_email' ? ' selected' : '') . '>Business Email</option>';
-        $html .= '<option value="enterprise_email"' . ($productInput === 'enterprise_email' ? ' selected' : '') . '>Enterprise Email</option></select></div>';
+        $html .= '<option value="business_email"' . ($productInput === 'business_email' ? ' selected' : '') . >' . Language::_('LogicboxesEmail.business_email', true) . '</option>';
+        $html .= '<option value="enterprise_email"' . ($productInput === 'enterprise_email' ? ' selected' : '') . >' . Language::_('LogicboxesEmail.enterprise_email', true) . '</option></select></div>';
         $html .= '<button class="btn btn-primary" type="submit" name="import_existing_order" value="1">Validar e associar encomenda</button></form></section>';
         return $html;
     }
@@ -168,7 +168,7 @@ trait ServiceTabsTrait
         $unusedLicenses = 0;
 
         if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key) || $orderId === '') {
-            $error = 'The service is missing its LogicBoxes account or order ID.';
+            $error = Language::_('LogicboxesEmail.msg.service_order_missing', true);
         } else {
             try {
                 $api = $this->getLogicboxesApi($row->meta->reseller_id, $row->meta->key, ($row->meta->sandbox ?? 'false') === 'true');
@@ -178,13 +178,13 @@ trait ServiceTabsTrait
                         $deleteCount = filter_var($post['accounts_to_delete'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
                         $prefix = $product === 'enterprise_email' ? 'enterpriseemail/us' : 'eelite/us';
                         if ($deleteCount === false) {
-                            $error = 'Indica um número válido de contas a eliminar.';
+                            $error = Language::_('LogicboxesEmail.msg.invalid_delete_count', true);
                         } else {
                             // Re-check purchased licences and active mailboxes immediately before deletion.
                             $detailsResponse = $api->submit($prefix . '/details', ['order-id' => $orderId], 'GET');
                             $usageResponse = $api->submit('mail/users/search', ['order-id' => $orderId, 'page-no' => 1], 'GET');
                             if (!$this->isSuccessfulResponse($detailsResponse) || !$this->isSuccessfulResponse($usageResponse)) {
-                                $error = 'Não foi possível confirmar as licenças e a utilização atuais. Nenhuma licença foi eliminada.';
+                                $error = Language::_('LogicboxesEmail.msg.verify_licences_usage_failed', true);
                             } else {
                                 $details = $detailsResponse->response();
                                 if (is_object($details) && isset($details->response)) $details = $details->response;
@@ -197,12 +197,12 @@ trait ServiceTabsTrait
                                     if (strpos($accountType, 'forward') === false) $usedMailboxes++;
                                 }
                                 if ($purchasedRaw === '' || !is_numeric($purchasedRaw)) {
-                                    $error = 'A OrderBox não devolveu o número de licenças contratadas. Nenhuma licença foi eliminada.';
+                                    $error = Language::_('LogicboxesEmail.msg.license_count_missing', true);
                                 } else {
                                     $purchasedNow = (int)$purchasedRaw;
                                     $unused = max(0, $purchasedNow - $usedMailboxes);
                                     if ($deleteCount > $unused) {
-                                        $error = 'Só podes eliminar ' . $unused . ' licença(s) não utilizadas. Existem ' . $usedMailboxes . ' mailbox(es) em utilização.';
+                                        $error = sprintf(Language::_('LogicboxesEmail.msg.only_unused_licenses', true), $unused, $usedMailboxes);
                                     } else {
                                         $deleteResponse = $api->submit($prefix . '/delete-email-account', [
                                             'order-id' => $orderId,
@@ -212,10 +212,10 @@ trait ServiceTabsTrait
                                         if ($this->isSuccessfulResponse($deleteResponse)) {
                                             $deleteData = $deleteResponse->response();
                                             $actionId = $this->firstApiValue($deleteData, ['eaqid', 'actionid', 'action-id']);
-                                            $message = 'Pedido de eliminação de ' . $deleteCount . ' licença(s) enviado à OrderBox. A operação pode ficar pendente; não repitas o pedido enquanto estiver pendente.';
-                                            if ($actionId !== '') $message .= ' Referência: ' . $actionId . '.';
+                                            $message = sprintf(Language::_('LogicboxesEmail.msg.delete_request_submitted', true), $deleteCount);
+                                            if ($actionId !== '') $message .= sprintf(Language::_('LogicboxesEmail.msg.reference', true), $actionId);
                                         } else {
-                                            $error = 'A OrderBox recusou a eliminação: ' . $this->responseError($deleteResponse);
+                                            $error = sprintf(Language::_('LogicboxesEmail.msg.license_delete_failed', true), $this->responseError($deleteResponse));
                                         }
                                     }
                                 }
@@ -277,9 +277,9 @@ trait ServiceTabsTrait
                         }
 
                         if ($customerId === '' || $customerUsername === '') {
-                            $error = 'Could not recover the LogicBoxes customer ID or username for this existing service. Check the linked Blesta client email and the customers/search API response in the module log.';
+                            $error = Language::_('LogicboxesEmail.msg.customer_recovery_failed', true);
                         } elseif (!filter_var($clientIp, FILTER_VALIDATE_IP)) {
-                            $error = 'Could not determine the client IP address required by the provider to generate a temporary SSO token.';
+                            $error = Language::_('LogicboxesEmail.msg.client_ip_missing', true);
                         } else {
                             // Documented password-less route (ResellerClub API: Generating a Login Token).
                             // Needs only the customer ID and the customer's IP; no password involved.
@@ -303,7 +303,7 @@ trait ServiceTabsTrait
                             }
                             if (!$this->isSuccessfulResponse($tokenResponse) || $token === '') {
                                 $this->logApiResponse($api, $tokenResponse);
-                                $error = 'LogicBoxes could not generate the login token: ' . $this->responseError($tokenResponse);
+                                $error = sprintf(Language::_('LogicboxesEmail.msg.login_token_failed', true), $this->responseError($tokenResponse));
                             } else {
                                 $resellerResponse = $api->submit('resellers/details', [], 'GET');
                                 $resellerData = $resellerResponse->response();
@@ -314,7 +314,7 @@ trait ServiceTabsTrait
                                 $brandingUrl = preg_replace('~^https?://~i', '', $brandingUrl);
                                 $brandingUrl = rtrim($brandingUrl, '/');
                                 if ($brandingUrl === '' || preg_match('/[^a-zA-Z0-9.\-]/', $brandingUrl)) {
-                                    $error = 'Could not resolve the branded OrderBox URL. Check the resellers/details API response in the Blesta module log.';
+                                    $error = Language::_('LogicboxesEmail.msg.branding_url_missing', true);
                                 } else {
                                     if ($panelTarget === 'dns') {
                                         // Documented service-name for the DNS service (ResellerClub KB: Managing DNS,
@@ -336,7 +336,7 @@ trait ServiceTabsTrait
                                             'service-name' => $emailServiceName
                                         ], '', '&', PHP_QUERY_RFC3986);
                                     }
-                                    $message = 'Control-panel access generated. Open the panel now; the token expires in 120 seconds.';
+                                    $message = Language::_('LogicboxesEmail.msg.panel_access_generated', true);
                                 }
                             }
                         }
@@ -350,19 +350,19 @@ trait ServiceTabsTrait
                         $country = strtoupper(trim((string)($post['country_code'] ?? 'PT')));
                         $language = trim((string)($post['language_code'] ?? 'en'));
                         if (!preg_match('/^[a-z0-9._%+\-]+$/i', $local) || $local === '') {
-                            $error = 'Enter a valid mailbox name (the part before @).';
+                            $error = Language::_('LogicboxesEmail.msg.invalid_mailbox_name', true);
                         } elseif (strlen($password) < 8 || $first === '' || $last === '' || !filter_var($notify, FILTER_VALIDATE_EMAIL)) {
-                            $error = 'Complete the name, a password of at least 8 characters and a valid notification email.';
+                            $error = Language::_('LogicboxesEmail.msg.mailbox_fields_required', true);
                         } elseif (
                             (strlen($local) >= 2 && stripos($password, $local) !== false) ||
                             (strlen((string)strtok($domain, '.')) >= 2 && stripos($password, (string)strtok($domain, '.')) !== false)
                         ) {
                             $domainPrefix = (string)strtok($domain, '.');
-                            $error = 'A password não pode conter o nome da mailbox (' . $local . ') nem o prefixo do domínio (' . $domainPrefix . '). Escolhe uma password diferente.';
+                            $error = sprintf(Language::_('LogicboxesEmail.msg.password_contains_name', true), $local, $domainPrefix);
                         } else {
                             $countResponse = $api->submit('mail/users/search', ['order-id' => $orderId, 'page-no' => 1], 'GET');
                             if (!$this->isSuccessfulResponse($countResponse)) {
-                                $error = 'Could not verify current mailbox usage. No account was created. ' . $this->responseError($countResponse);
+                                $error = sprintf(Language::_('LogicboxesEmail.msg.verify_mailbox_usage_failed', true), $this->responseError($countResponse));
                             } else {
                                 $current = $this->collectEmailUsers($countResponse->response());
                                 $mailboxCount = 0;
@@ -371,7 +371,7 @@ trait ServiceTabsTrait
                                     if ($type === '' || strpos($type, 'forward') === false) $mailboxCount++;
                                 }
                                 if ($mailboxCount >= $maxMailboxes) {
-                                    $error = 'The service has reached its purchased mailbox limit (' . $maxMailboxes . ').';
+                                    $error = sprintf(Language::_('LogicboxesEmail.msg.mailbox_limit_reached', true), $maxMailboxes);
                                 } else {
                                     $r = $api->submit('mail/user/add', [
                                         'order-id' => $orderId, 'email' => $email, 'passwd' => $password,
@@ -392,9 +392,9 @@ trait ServiceTabsTrait
                                     }
                                     $apiResponseText = preg_replace('/("(?:passwd|password|api-key|auth-token|auth_token)"\s*:\s*)"[^"]*"/i', '$1"[REDACTED]"', $apiResponseText);
                                     if ($this->isSuccessfulResponse($r)) {
-                                        $message = 'Mailbox criada com sucesso: ' . $email;
+                                        $message = sprintf(Language::_('LogicboxesEmail.msg.mailbox_created', true), $email);
                                     } else {
-                                        $error = 'Não foi possível criar a mailbox: ' . $this->responseError($r);
+                                        $error = sprintf(Language::_('LogicboxesEmail.msg.mailbox_create_failed', true), $this->responseError($r));
                                     }
                                 }
                             }
@@ -404,29 +404,29 @@ trait ServiceTabsTrait
                         $targets = preg_split('/[\r\n,;]+/', (string)($post['forwards'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
                         $targets = array_values(array_unique(array_filter(array_map('trim', $targets), function ($v) { return filter_var($v, FILTER_VALIDATE_EMAIL); })));
                         if (!preg_match('/^[a-z0-9._%+\-]+$/i', $local) || $local === '' || !$targets) {
-                            $error = 'Enter a valid forward address name and at least one valid destination email address.';
+                            $error = Language::_('LogicboxesEmail.msg.forward_invalid', true);
                         } else {
                             $r = $api->submit('mail/user/add-forward-only-account', [
                                 'order-id' => $orderId, 'email' => $local . '@' . $domain, 'forwards' => implode(',', $targets)
                             ], 'POST');
-                            if ($this->isSuccessfulResponse($r)) $message = 'Forward-only account created: ' . $local . '@' . $domain;
-                            else $error = 'Forward-only account creation failed: ' . $this->responseError($r);
+                            if ($this->isSuccessfulResponse($r)) $message = sprintf(Language::_('LogicboxesEmail.msg.forward_created', true), $local . '@' . $domain);
+                            else $error = sprintf(Language::_('LogicboxesEmail.msg.forward_create_failed', true), $this->responseError($r));
                         }
                     } elseif ($action === 'delete_user') {
                         $email = trim((string)($post['email'] ?? ''));
                         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || substr(strrchr($email, '@'), 1) !== $domain) {
-                            $error = 'Invalid email address for this service.';
+                            $error = Language::_('LogicboxesEmail.msg.email_invalid', true);
                         } else {
                             $r = $api->submit('mail/user/delete', ['order-id' => $orderId, 'email' => $email], 'POST');
-                            if ($this->isSuccessfulResponse($r)) $message = 'Email account deleted: ' . $email;
-                            else $error = 'Deletion failed: ' . $this->responseError($r);
+                            if ($this->isSuccessfulResponse($r)) $message = sprintf(Language::_('LogicboxesEmail.msg.email_deleted', true), $email);
+                            else $error = sprintf(Language::_('LogicboxesEmail.msg.delete_failed', true), $this->responseError($r));
                         }
                     }
                 }
                 $list = $api->submit('mail/users/search', ['order-id' => $orderId, 'page-no' => 1], 'GET');
 				$this->logApiResponse($api, $list);
                 if ($this->isSuccessfulResponse($list)) $users = $this->collectEmailUsers($list->response());
-                else $error = $error ?: ('Could not retrieve email accounts: ' . $this->responseError($list));
+                else $error = $error ?: (sprintf(Language::_('LogicboxesEmail.msg.account_list_failed', true), $this->responseError($list)));
                 $prefix = $product === 'enterprise_email' ? 'enterpriseemail/us' : 'eelite/us';
                 $licenseDetailsResponse = $api->submit($prefix . '/details', ['order-id' => $orderId], 'GET');
                 $purchasedLicenses = null;
@@ -445,7 +445,7 @@ trait ServiceTabsTrait
                 $unusedLicenses = $purchasedLicenses === null ? 0 : max(0, $purchasedLicenses - $usedLicenses);
             } catch (Throwable $e) {
                 $this->logEmailDiagnostic('Client email tab exception for service ' . (int)($service->id ?? 0) . ': ' . $e->getMessage());
-                $error = 'The email provider could not be reached. Please try again later.';
+                $error = Language::_('LogicboxesEmail.msg.provider_unreachable', true);
             }
         }
 
@@ -469,17 +469,17 @@ trait ServiceTabsTrait
         if ($orderId !== '') {
             $csrfPanel = $this->Form->getCsrfToken();
             $output .= '<section class="logicboxes-email-control-panel">';
-            $output .= '<h3>Email control panel</h3>';
-            $output .= '<p>Manage mailboxes, storage allocation and email settings in the provider control panel.</p><br>';
+            $output .= '<h3>' . Language::_('LogicboxesEmail.panel.title', true) . '</h3>';
+            $output .= '<p>' . Language::_('LogicboxesEmail.panel.description', true) . '</p><br>';
             if ($panelLaunchUrl !== null) {
                 // The public ResellerClub WHMCS module opens this exact servlet using
                 // a GET URL; the service-name selects the mail hosting panel.
                 // The form that requested the token opens in a new tab; send that tab straight to the panel.
                 $output .= '<script>window.location.replace(' . json_encode($panelLaunchUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');</script>';
-                $output .= '<p>The secure panel token expires shortly. Continue now.</p>';
+                $output .= '<p>' . Language::_('LogicboxesEmail.panel.token_notice', true) . '</p>';
                 $output .= '<a class="btn btn-primary logicboxes-email-panel-launch" href="' . $escapePanel($panelLaunchUrl) . '" target="_blank" rel="noopener noreferrer">Continue to email control panel</a>';
             } else {
-                $panelButtons = ['email' => 'Open email control panel', 'dns' => 'Manage DNS'];
+                $panelButtons = ['email' => Language::_('LogicboxesEmail.panel.open_email', true), 'dns' => Language::_('LogicboxesEmail.panel.manage_dns', true)];
                 foreach ($panelButtons as $panelTargetKey => $panelButtonLabel) {
                     $output .= '<form method="post" target="logicboxesEmailPanel" class="logicboxes-email-panel-request" style="display:inline-block;margin-right:8px;" onsubmit="window.open(\'\', \'logicboxesEmailPanel\', \'width=900,height=650,resizable=yes,scrollbars=yes\');">';
                     $output .= '<input type="hidden" name="_csrf_token" value="' . $escapePanel($csrfPanel) . '">';
@@ -505,7 +505,7 @@ trait ServiceTabsTrait
         $records = [];
         $error = null;
         if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key) || $orderId === '') {
-            $error = 'The service is missing its LogicBoxes account or order ID.';
+            $error = Language::_('LogicboxesEmail.msg.service_order_missing', true);
         } else {
             try {
                 $api = $this->getLogicboxesApi($row->meta->reseller_id, $row->meta->key, ($row->meta->sandbox ?? 'false') === 'true');
@@ -520,10 +520,10 @@ trait ServiceTabsTrait
                             if (is_array($item)) $records[] = $item;
                         }
                     }
-                } else $error = 'Could not retrieve DNS records: ' . $this->responseError($r);
+                } else $error = sprintf(Language::_('LogicboxesEmail.msg.dns_records_failed', true), $this->responseError($r));
             } catch (Throwable $e) {
                 $this->logEmailDiagnostic('DNS tab exception for service ' . (int)($service->id ?? 0) . ': ' . $e->getMessage());
-                $error = 'The email provider could not be reached. Please try again later.';
+                $error = Language::_('LogicboxesEmail.msg.provider_unreachable', true);
             }
         }
         $this->view = new View('client_dns_setup', 'default');
@@ -550,14 +550,14 @@ trait ServiceTabsTrait
         };
 
         $html = '<section class="logicboxes-email-management">';
-        $html .= '<h3>Email Hosting</h3>';
+        $html .= '<h3>' . Language::_('LogicboxesEmail.manage.title', true) . '</h3>';
         $html .= '<div class="table-responsive"><table class="table table-striped">';
         $html .= '<tbody>';
         $html .= '<tr><th>Domínio</th><td>' . $e($domain ?: '—') . '</td></tr>';
         $html .= '</tbody></table></div>';
 
         if (!$orderId || !$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
-            $html .= '<div class="alert alert-warning">Mailbox information is not available because the service or LogicBoxes account configuration is incomplete.</div>';
+            $html .= '<div class="alert alert-warning">' . Language::_('LogicboxesEmail.manage.incomplete', true) . '</div>';
             return $html . '</section>';
         }
 
@@ -576,7 +576,7 @@ trait ServiceTabsTrait
 
             if (!$this->isSuccessfulResponse($response)) {
                 $this->logEmailDiagnostic('Mailbox list failed for service ' . (int)($service->id ?? 0) . ', order ' . $orderId . ': ' . $this->responseError($response));
-                $html .= '<div class="alert alert-warning">We could not retrieve the mailbox list from the email provider. Please try again later or contact support.</div>';
+                $html .= '<div class="alert alert-warning">' . Language::_('LogicboxesEmail.manage.provider_error', true) . '</div>';
                 return $html . '</section>';
             }
 
@@ -627,23 +627,23 @@ trait ServiceTabsTrait
             $accountsAvailable = max(0, $purchasedAccounts - $mailboxCount);
             $storageBlocks = max(0, (int)($fields->email_storage_blocks ?? 0));
 
-            $html .= '<h4>Account &amp; Storage Capacity</h4>';
+            $html .= '<h4>' . Language::_('LogicboxesEmail.manage.capacity_title', true) . '</h4>';
             $html .= '<div class="table-responsive"><table class="table table-striped"><tbody>';
-            $html .= '<tr><th>Total Email Accounts</th><td>' . $e($purchasedAccounts) . '</td></tr>';
-            $html .= '<tr><th>Email Accounts Created</th><td>' . $e($mailboxCount) . '</td></tr>';
-            $html .= '<tr><th>Email Accounts Available</th><td>' . $e($accountsAvailable) . '</td></tr>';
-            $html .= '<tr><th>Email Forwarders Created</th><td>' . $e($forwarderCount) . '</td></tr>';
-            $html .= '<tr><th>Storage Blocks Total (5 GB)</th><td>' . $e($storageBlocks) . '</td></tr>';
-            $html .= '<tr><th>Storage Blocks Available</th><td>See allocation per mailbox in OrderBox</td></tr>';
+            $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.total_accounts', true) . '</th><td>' . $e($purchasedAccounts) . '</td></tr>';
+            $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.accounts_created', true) . '</th><td>' . $e($mailboxCount) . '</td></tr>';
+            $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.accounts_available', true) . '</th><td>' . $e($accountsAvailable) . '</td></tr>';
+            $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.forwarders_created', true) . '</th><td>' . $e($forwarderCount) . '</td></tr>';
+            $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.storage_blocks_total', true) . '</th><td>' . $e($storageBlocks) . '</td></tr>';
+            $html .= '<tr><th>' . Language::_('LogicboxesEmail.manage.storage_blocks_available', true) . '</th><td>' . Language::_('LogicboxesEmail.manage.storage_blocks_note', true) . '</td></tr>';
             $html .= '</tbody></table></div>';
 
-            $html .= '<h4>Email Accounts</h4>';
+            $html .= '<h4>' . Language::_('LogicboxesEmail.manage.accounts_title', true) . '</h4>';
             if (!$users) {
-                $html .= '<p>No email accounts were returned by the provider for this order.</p>';
+                $html .= '<p>' . Language::_('LogicboxesEmail.manage.no_accounts', true) . '</p>';
             } else {
-                $html .= '<p>' . count($users) . ' account(s) returned (maximum 200 per page).</p>';
+                $html .= '<p>' . sprintf(Language::_('LogicboxesEmail.manage.accounts_count', true), count($users)) . '</p>';
                 $html .= '<div class="table-responsive"><table class="table table-striped">';
-                $html .= '<thead><tr><th>Email address</th><th>Status</th><th>Account type</th><th>Usage / Quota</th></tr></thead><tbody>';
+                $html .= '<thead><tr><th>' . Language::_('LogicboxesEmail.manage.table_email', true) . '</th><th>' . Language::_('LogicboxesEmail.manage.table_status', true) . '</th><th>' . Language::_('LogicboxesEmail.manage.table_type', true) . '</th><th>' . Language::_('LogicboxesEmail.manage.table_usage_quota', true) . '</th></tr></thead><tbody>';
                 foreach ($users as $user) {
                     $email = $this->getEmailAddressFromUser($user);
                     $status = $this->firstApiValue($user, ['user.status', 'status']);
@@ -696,7 +696,7 @@ trait ServiceTabsTrait
             $html .= '<div class="alert alert-warning">We could not retrieve the mailbox list from the email provider. Please contact support if the problem persists.</div>';
         }
 
-        $html .= '<p class="small text-muted">Account counts are retrieved from OrderBox where available. Storage Blocks Total reflects the quantity recorded on this Blesta service; allocation availability is not exposed reliably by the current API response.</p>';
+        $html .= '<p class="small text-muted">' . Language::_('LogicboxesEmail.manage.capacity_note', true) . '</p>';
         return $html . '</section>';
     }
 
