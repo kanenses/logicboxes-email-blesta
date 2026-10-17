@@ -169,123 +169,15 @@ class LogicboxesEmail extends Module
                 $fields = $this->serviceFieldsToObject($fullService->fields ?? []);
                 if (trim((string)($fields->email_order_id ?? '')) === '') continue;
 
-                // Process deferred checkout changes only when an invoice linked to this
-                // service is closed (Blesta's paid/closed invoice state), never while open.
-                if (in_array(strtolower(trim((string)($fields->email_pending_change ?? '0'))), ['1', 'true', 'yes'], true)) {
-                    $paidForService = false;
-                    try {
-                        $clientId = (int)($fullService->client_id ?? 0);
-                        // First ask Blesta for closed invoices associated with this service.
-                        // In some upgrade flows the association is not returned by
-                        // getAllWithService(), so fall back to this client's closed invoices
-                        // and verify the invoice line item actually references this service.
-                        $relatedInvoices = [];
-                        $usedServiceSpecificQuery = false;
-                        if (method_exists($this->Invoices, 'getAllWithService')) {
-                            $relatedInvoices = $this->Invoices->getAllWithService($serviceId, $clientId ?: null, 'closed');
-                            if (is_object($relatedInvoices)) {
-                                foreach (['invoices', 'results', 'records'] as $property) {
-                                    if (isset($relatedInvoices->{$property}) && is_array($relatedInvoices->{$property})) {
-                                        $relatedInvoices = $relatedInvoices->{$property};
-                                        break;
-                                    }
-                                }
-                            }
-                            $usedServiceSpecificQuery = is_array($relatedInvoices) && count($relatedInvoices) > 0;
-                        }
-                        if (!is_array($relatedInvoices) || count($relatedInvoices) === 0) {
-                            $relatedInvoices = $this->Invoices->getAll($clientId ?: null, 'closed');
-                        }
-                        if (is_object($relatedInvoices)) {
-                            foreach (['invoices', 'results', 'records'] as $property) {
-                                if (isset($relatedInvoices->{$property}) && is_array($relatedInvoices->{$property})) {
-                                    $relatedInvoices = $relatedInvoices->{$property};
-                                    break;
-                                }
-                            }
-                        }
-                        $invoiceCount = is_array($relatedInvoices) ? count($relatedInvoices) : 0;
-                        foreach ((array)$relatedInvoices as $invoice) {
-                            if (!is_object($invoice)) $invoice = (object)$invoice;
-                            $status = strtolower(trim((string)($invoice->status ?? $invoice->status_name ?? 'closed')));
-                            if (!in_array($status, ['closed', 'paid'], true)) continue;
-                            $invoiceId = (int)($invoice->id ?? $invoice->id_code ?? $invoice->invoice_id ?? 0);
-                            if ($invoiceId < 1) continue;
-
-                            // For the service-specific query, the association itself is enough.
-                            $isRelated = $usedServiceSpecificQuery;
-                            // Confirm relation against actual invoice lines for fallback results.
-                            if (!$isRelated) {
-                                foreach ((array)$this->Invoices->getLineItems($invoiceId) as $line) {
-                                    if (!is_object($line)) $line = (object)$line;
-                                    $lineServiceId = (int)($line->service_id ?? $line->service_id_code ?? $line->rel_id ?? 0);
-                                    if ($lineServiceId === $serviceId) {
-                                        $isRelated = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if ($isRelated) {
-                                $paidForService = true;
-                                $this->logEmailDiagnostic('Found closed invoice ' . $invoiceId . ' for deferred service ' . $serviceId . ' (status=' . $status . ').');
-                                break;
-                            }
-                        }
-                        $this->logEmailDiagnostic('Deferred service ' . $serviceId . ': checked ' . $invoiceCount . ' closed invoice record(s); paid match=' . ($paidForService ? 'yes' : 'no') . '.');
-                    } catch (Throwable $e) {
-                        $this->logEmailDiagnostic('Could not verify paid invoice for deferred service ' . $serviceId . ': ' . $e->getMessage());
-                    }
-                    if ($paidForService) {
-                        try {
-                            // Services::get() may expose the package nested on the
-                            // service instead of a top-level package_id.
-                            $packageId = (int)($fullService->package_id ?? $fullService->package->id ?? 0);
-                            $package = $packageId > 0 ? $this->Packages->get($packageId) : null;
-                            if (!$package && !empty($fullService->pricing_id) && method_exists($this->Packages, 'getByPricingId')) {
-                                $package = $this->Packages->getByPricingId((int)$fullService->pricing_id);
-                            }
-                            if (!$package && isset($fullService->package) && is_object($fullService->package)) {
-                                $package = $fullService->package;
-                                // Some Blesta service records wrap the package object once.
-                                if (isset($package->stdClass) && is_object($package->stdClass)) {
-                                    $package = $package->stdClass;
-                                }
-                            }
-                            if (!$package) throw new RuntimeException('Could not load package for deferred service ' . $serviceId . '; package_id=' . $packageId . '; pricing_id=' . (int)($fullService->pricing_id ?? 0) . '.');
-                            $resultFields = $this->editService($package, $fullService, [
-                                'mailboxes' => (int)($fields->email_pending_accounts ?? $fields->email_accounts ?? 0),
-                                'extra storage' => (int)($fields->email_pending_storage_blocks ?? $fields->email_storage_blocks ?? 0),
-                                'use_module' => 'true'
-                            ]);
-                            if (is_array($resultFields)) {
-                                $saved = true;
-                                foreach ($resultFields as $field) {
-                                    if (!isset($field['key'])) continue;
-                                    $r = $this->Services->editField($serviceId, [
-                                        'key' => $field['key'], 'value' => (string)($field['value'] ?? ''),
-                                        'encrypted' => !empty($field['encrypted']) ? 'true' : 'false'
-                                    ]);
-                                    if ($r === false) $saved = false;
-                                }
-                                if ($saved) {
-                                    $this->logEmailDiagnostic('Applied deferred paid upgrade for service ' . $serviceId . '.');
-                                    $fields = $this->serviceFieldsToObject($this->Services->get($serviceId)->fields ?? []);
-                                } else {
-                                    $this->logEmailDiagnostic('OrderBox change was attempted for service ' . $serviceId . ', but saving service fields failed.');
-                                    continue;
-                                }
-                            } else {
-                                $this->logEmailDiagnostic('Deferred upgrade for service ' . $serviceId . ' was not applied; editService returned no fields.');
-                                continue;
-                            }
-                        } catch (Throwable $e) {
-                            $this->logEmailDiagnostic('Deferred paid upgrade failed for service ' . $serviceId . ': ' . $e->getMessage());
-                            continue;
-                        }
-                    } else {
-                        // Leave the request pending until a closed invoice exists.
+                // Deferred checkout change: apply only after the invoice created for
+                // THIS change is paid (date_closed set). See processDeferredChange().
+                if ($this->isTruthyFlag($fields->email_pending_change ?? '0')) {
+                    if (!$this->processDeferredChange($fullService, $fields)) {
                         continue;
                     }
+                    $fullService = $this->Services->get($serviceId);
+                    if (!is_object($fullService)) continue;
+                    $fields = $this->serviceFieldsToObject($fullService->fields ?? []);
                 }
                 if (!in_array(strtolower(trim((string)($fields->email_sync_pending ?? '0'))), ['1', 'true', 'yes'], true)) continue;
                 $checked++;
@@ -302,6 +194,215 @@ class LogicboxesEmail extends Module
         } catch (Throwable $e) {
             $this->logEmailDiagnostic('Scheduled OrderBox reconciliation failed: ' . $e->getMessage());
         }
+    }
+
+    private function isTruthyFlag($value)
+    {
+        return in_array(strtolower(trim((string)$value)), ['1', 'true', 'yes'], true);
+    }
+
+    /** Visible in Tools > Logs > Module, and also in the Blesta file log. */
+    private function moduleLog($message, $success = true)
+    {
+        try {
+            $this->log('LogicBoxes Email: deferred upgrade', (string)$message, 'output', (bool)$success);
+        } catch (Throwable $e) {
+            // Logging must never break processing.
+        }
+        $this->logEmailDiagnostic($message);
+    }
+
+    /** Services::get() exposes the package as $service->package, not package_id. */
+    private function resolveServicePackage($service)
+    {
+        Loader::loadModels($this, ['Packages']);
+        $packageId = (int)($service->package->id ?? ($service->package_id ?? 0));
+        if ($packageId > 0) {
+            $package = $this->Packages->get($packageId);
+            if ($package) return $package;
+        }
+        if (!empty($service->pricing_id) && method_exists($this->Packages, 'getByPricingId')) {
+            $package = $this->Packages->getByPricingId((int)$service->pricing_id);
+            if ($package) return $package;
+        }
+        return null;
+    }
+
+    /**
+     * Latest non-draft invoice that contains a line for this service, read
+     * directly from invoice_lines/invoices. A paid invoice in Blesta has
+     * status "active" (or "void" if cancelled) and a non-null date_closed.
+     */
+    private function findLatestServiceInvoice($serviceId)
+    {
+        Loader::loadComponents($this, ['Record']);
+        $row = $this->Record->query(
+            "SELECT i.id, i.id_value, i.status, i.date_billed, i.date_closed
+               FROM invoice_lines AS l
+              INNER JOIN invoices AS i ON i.id = l.invoice_id
+              WHERE l.service_id = ? AND i.status IN ('active', 'proforma', 'void')
+              ORDER BY i.id DESC
+              LIMIT 1",
+            (int)$serviceId
+        )->fetch();
+        return $row ? (object)$row : null;
+    }
+
+    private function saveServiceFields($serviceId, array $resultFields)
+    {
+        Loader::loadModels($this, ['Services']);
+        $existing = [];
+        $service = $this->Services->get($serviceId);
+        foreach ((array)($service->fields ?? []) as $f) {
+            if (isset($f->key)) $existing[$f->key] = true;
+        }
+        $ok = true;
+        foreach ($resultFields as $field) {
+            if (!isset($field['key'])) continue;
+            $data = [
+                'key' => $field['key'],
+                'value' => (string)($field['value'] ?? ''),
+                'encrypted' => !empty($field['encrypted']) ? 'true' : 'false'
+            ];
+            $r = isset($existing[$field['key']])
+                ? $this->Services->editField($serviceId, $data)
+                : $this->Services->addField($serviceId, $data);
+            if ($r === false) $ok = false;
+        }
+        return $ok;
+    }
+
+    /**
+     * Invoices for this service billed since the first pending checkout
+     * request (10-minute tolerance). Used so that every purchase made while a
+     * change is pending must be paid before anything is provisioned.
+     */
+    private function findServiceInvoicesSince($serviceId, $sinceUtc)
+    {
+        Loader::loadComponents($this, ['Record']);
+        $rows = $this->Record->query(
+            "SELECT DISTINCT i.id, i.id_value, i.status, i.date_billed, i.date_closed
+               FROM invoice_lines AS l
+              INNER JOIN invoices AS i ON i.id = l.invoice_id
+              WHERE l.service_id = ? AND i.status IN ('active', 'proforma', 'void')
+                AND i.date_billed >= ?
+              ORDER BY i.id ASC",
+            (int)$serviceId,
+            $sinceUtc
+        )->fetchAll();
+        $out = [];
+        foreach ((array)$rows as $r) $out[] = (object)$r;
+        return $out;
+    }
+
+    private function clearPendingChange($serviceId)
+    {
+        return $this->saveServiceFields($serviceId, [
+            ['key' => 'email_pending_change', 'value' => '0', 'encrypted' => 0],
+            ['key' => 'email_pending_accounts', 'value' => '', 'encrypted' => 0],
+            ['key' => 'email_pending_storage_blocks', 'value' => '', 'encrypted' => 0],
+            ['key' => 'email_pending_since', 'value' => '', 'encrypted' => 0]
+        ]);
+    }
+
+    /**
+     * Apply a change recorded during checkout.
+     *  - Pure reductions (nothing increases) are applied on the next cron run;
+     *    editService() refuses if more mailboxes exist than the new total.
+     *  - Anything that increases accounts or storage is applied only when ALL
+     *    invoices for the service billed since the first pending request are
+     *    paid (void invoices are ignored; if all are void the change is cancelled).
+     * editService() reads current OrderBox quantities first, so a retry never
+     * buys the same accounts twice.
+     */
+    private function processDeferredChange($service, $fields)
+    {
+        $serviceId = (int)$service->id;
+
+        $curAccounts = (int)($fields->email_accounts ?? 0);
+        $curBlocks = (int)($fields->email_storage_blocks ?? 0);
+        $acc = trim((string)($fields->email_pending_accounts ?? ''));
+        $blk = trim((string)($fields->email_pending_storage_blocks ?? ''));
+        $targetAccounts = (int)($acc !== '' ? $acc : $curAccounts);
+        $targetBlocks = (int)($blk !== '' ? $blk : $curBlocks);
+
+        if ($targetAccounts === $curAccounts && $targetBlocks === $curBlocks) {
+            $this->clearPendingChange($serviceId);
+            $this->moduleLog('Service ' . $serviceId . ': pending change equals current quantities; cleared.', true);
+            return false;
+        }
+
+        $isIncrease = ($targetAccounts > $curAccounts || $targetBlocks > $curBlocks);
+        $label = $isIncrease ? 'paid upgrade' : 'downgrade';
+        $number = '-';
+
+        if ($isIncrease) {
+            $since = trim((string)($fields->email_pending_since ?? ''));
+            $sinceTs = $since !== '' ? strtotime($since . ' UTC') : false;
+            if ($sinceTs === false) {
+                $this->moduleLog('Service ' . $serviceId . ': pending upgrade has no valid email_pending_since; waiting (apply manually with Save).', false);
+                return false;
+            }
+            try {
+                $invoices = $this->findServiceInvoicesSince($serviceId, gmdate('Y-m-d H:i:s', $sinceTs - 600));
+            } catch (Throwable $e) {
+                $this->moduleLog('Service ' . $serviceId . ': could not read invoices: ' . $e->getMessage(), false);
+                return false;
+            }
+            $active = [];
+            $unpaid = [];
+            foreach ($invoices as $inv) {
+                if ($inv->status === 'void') continue;
+                $active[] = $inv;
+                if (empty($inv->date_closed)) $unpaid[] = (string)($inv->id_value ?? $inv->id);
+            }
+            if (empty($invoices)) {
+                $this->logEmailDiagnostic('Service ' . $serviceId . ': pending upgrade, no invoice since ' . $since . ' UTC yet; waiting.');
+                return false;
+            }
+            if (empty($active)) {
+                $this->clearPendingChange($serviceId);
+                $this->moduleLog('Service ' . $serviceId . ': all invoices for the pending change were voided; change cancelled.', true);
+                return false;
+            }
+            if (!empty($unpaid)) {
+                $this->logEmailDiagnostic('Service ' . $serviceId . ': invoice(s) ' . implode(', ', $unpaid) . ' not paid yet; waiting.');
+                return false;
+            }
+            $nums = [];
+            foreach ($active as $inv) $nums[] = (string)($inv->id_value ?? $inv->id);
+            $number = implode(', ', $nums);
+        }
+
+        $package = $this->resolveServicePackage($service);
+        if (!$package) {
+            $this->moduleLog('Service ' . $serviceId . ': ' . $label . ' ready, but the package could not be loaded.', false);
+            return false;
+        }
+
+        try {
+            $result = $this->editService($package, $service, [
+                'mailboxes' => $targetAccounts,
+                'extra storage' => $targetBlocks,
+                'use_module' => 'true'
+            ]);
+        } catch (Throwable $e) {
+            $this->moduleLog('Service ' . $serviceId . ': exception while applying ' . $label . ': ' . $e->getMessage(), false);
+            return false;
+        }
+        if (!is_array($result)) {
+            $errors = method_exists($this->Input, 'errors') ? $this->Input->errors() : [];
+            $this->moduleLog('Service ' . $serviceId . ': ' . $label . ' failed in OrderBox: ' . json_encode($errors), false);
+            return false;
+        }
+        if (!$this->saveServiceFields($serviceId, $result)) {
+            $this->moduleLog('Service ' . $serviceId . ': OrderBox updated, but saving Blesta service fields failed.', false);
+            return false;
+        }
+        $this->moduleLog('Service ' . $serviceId . ': applied ' . $label
+            . ($isIncrease ? ' from invoice(s) ' . $number : '')
+            . ' (accounts=' . $targetAccounts . ', storage blocks=' . $targetBlocks . ').', true);
+        return true;
     }
 
     public function getModuleRowFields($vars = null)
@@ -1771,6 +1872,12 @@ $this->logEmailDiagnostic(
             );
             $requestedAccounts = $requestedAccounts === null ? $currentAccounts : (int)$requestedAccounts;
             $requestedBlocks = $requestedBlocks === null ? $currentBlocks : max(0, (int)$requestedBlocks);
+            // Keep the time of the FIRST pending request so that every invoice
+            // issued since then must be paid before an increase is provisioned.
+            $hasChange = ($requestedAccounts !== $currentAccounts || $requestedBlocks !== $currentBlocks);
+            $prevSince = trim((string)($fields->email_pending_since ?? ''));
+            $pendingSince = !$hasChange ? ''
+                : (($this->isTruthyFlag($fields->email_pending_change ?? '0') && $prevSince !== '') ? $prevSince : gmdate('Y-m-d H:i:s'));
             $this->logEmailDiagnostic('Deferred OrderBox provisioning during ClientServices::review for service '
                 . (int)($service->id ?? 0) . '; target accounts=' . $requestedAccounts . ', target storage blocks=' . $requestedBlocks . '.');
             return [
@@ -1785,6 +1892,7 @@ $this->logEmailDiagnostic(
                 ['key' => 'email_pending_accounts', 'value' => (string)$requestedAccounts, 'encrypted' => 0],
                 ['key' => 'email_pending_storage_blocks', 'value' => (string)$requestedBlocks, 'encrypted' => 0],
                 ['key' => 'email_pending_change', 'value' => (($requestedAccounts !== $currentAccounts || $requestedBlocks !== $currentBlocks) ? '1' : '0'), 'encrypted' => 0],
+                ['key' => 'email_pending_since', 'value' => $pendingSince, 'encrypted' => 0],
                 ['key' => 'email_sync_pending', 'value' => (string)($fields->email_sync_pending ?? '0'), 'encrypted' => 0]
             ];
         }
@@ -2017,6 +2125,7 @@ $this->logEmailDiagnostic(
             ['key' => 'email_pending_accounts', 'value' => '', 'encrypted' => 0],
             ['key' => 'email_pending_storage_blocks', 'value' => '', 'encrypted' => 0],
             ['key' => 'email_pending_change', 'value' => '0', 'encrypted' => 0],
+            ['key' => 'email_pending_since', 'value' => '', 'encrypted' => 0],
             ['key' => 'email_sync_pending', 'value' => $syncPending ? '1' : '0', 'encrypted' => 0]
         ];
     }
