@@ -125,9 +125,9 @@ trait ModuleConfigurationTrait
     private function getRowRules()
     {
         return [
-            'account_name' => ['empty' => ['rule' => 'isEmpty', 'negate' => true, 'message' => 'Account Name is required.']],
-            'reseller_id' => ['empty' => ['rule' => 'isEmpty', 'negate' => true, 'message' => 'Reseller ID is required.']],
-            'key' => ['empty' => ['rule' => 'isEmpty', 'negate' => true, 'message' => 'API Key is required.']]
+            'account_name' => ['empty' => ['rule' => 'isEmpty', 'negate' => true, 'message' => Language::_('LogicboxesEmail.validation.account_name_required', true)]],
+            'reseller_id' => ['empty' => ['rule' => 'isEmpty', 'negate' => true, 'message' => Language::_('LogicboxesEmail.validation.reseller_id_required', true)]],
+            'key' => ['empty' => ['rule' => 'isEmpty', 'negate' => true, 'message' => Language::_('LogicboxesEmail.validation.api_key_required', true)]]
         ];
     }
 }
