@@ -790,23 +790,30 @@ trait ServiceTabsTrait
             }
             if (!is_array($node)) return null;
 
-            // OrderBox /details returns addons as a LIST, for example:
-            // "addons": [{"addon_name":"email_storage_5","quantity":1,"unused_quantity":1}]
-            // This is different from the older/alternate shape addon.email_storage_5.quantity.
+            $hasAddonsList = false;
+            $matchedStorageAddon = false;
+
+            // OrderBox /details returns addons as a list. If the list is present
+            // but email_storage_5 is absent, the order has zero blocks for this add-on.
+            // If the matching entry exists but its quantity is malformed, keep the
+            // quantity unknown instead of silently treating it as zero.
             foreach ($node as $key => $value) {
                 $normalized = strtolower(str_replace(['_', '-', ' '], '', (string)$key));
                 if ($normalized === 'addons' && is_array($value)) {
+                    $hasAddonsList = true;
                     foreach ($value as $addonEntry) {
                         if (is_object($addonEntry)) $addonEntry = (array)$addonEntry;
                         if (!is_array($addonEntry)) continue;
                         $addonName = $addonEntry['addon_name'] ?? $addonEntry['addon-name'] ?? $addonEntry['name'] ?? '';
                         if (strtolower(trim((string)$addonName)) !== 'email_storage_5') continue;
+                        $matchedStorageAddon = true;
                         $quantity = $addonEntry['quantity'] ?? null;
                         if (is_scalar($quantity) && is_numeric($quantity)) {
                             return max(0, (int)$quantity);
                         }
                     }
                 }
+
                 // Retain compatibility with responses that expose the add-on as a keyed object.
                 if ($normalized === 'emailstorage5') {
                     if (is_object($value)) $value = (array)$value;
@@ -820,9 +827,14 @@ trait ServiceTabsTrait
                     }
                 }
             }
+
             foreach ($node as $value) {
                 $found = $walk($value, $depth + 1);
                 if ($found !== null) return $found;
+            }
+
+            if ($hasAddonsList && !$matchedStorageAddon) {
+                return 0;
             }
             return null;
         };
