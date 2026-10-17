@@ -168,3 +168,5 @@ $lang['LogicboxesEmail.manage.domain'] = 'Domain';
 $lang['LogicboxesEmail.manage.provider_error_persistent'] = 'We could not retrieve the mailbox list from the email provider. Please contact support if the problem persists.';
 $lang['LogicboxesEmail.dns.other'] = 'Other';
 $lang['LogicboxesEmail.provision.domain_placeholder'] = 'example.com';
+$lang['LogicboxesEmail.api.generic_error'] = 'LogicBoxes returned an error.';
+$lang['LogicboxesEmail.api.invalid_response'] = 'LogicBoxes returned an invalid or unsuccessful response: %s';
