@@ -476,7 +476,7 @@ trait ServiceSyncTrait
                 return false;
             }
 			$formattedOptions = $this->PackageOptions->formatServiceOptions($serviceOptions);
-			
+
 			$configOptions = (
 			    is_array($formattedOptions)
 			    && isset($formattedOptions['configoptions'])
