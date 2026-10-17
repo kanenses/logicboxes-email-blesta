@@ -34,10 +34,7 @@ $lang['LogicboxesEmail.!tooltip.row_meta.sandbox'] = 'Use the LogicBoxes test en
 $lang['LogicboxesEmail.accounts'] = 'Number of Email Accounts';
 $lang['LogicboxesEmail.invalid_domain'] = 'Enter a valid domain name, for example example.com.';
 $lang['LogicboxesEmail.invalid_accounts'] = 'The number of email accounts must be between 1 and 10000.';
-$lang['LogicboxesEmail.tab_email_accounts'] = 'Email accounts';
-$lang['LogicboxesEmail.tab_dns_setup'] = 'DNS configuration';
 
-$lang['LogicboxesEmail.tab_import_order'] = 'Import OrderBox order';
 $lang['LogicboxesEmail.client.email_accounts_title'] = 'Email accounts';
 $lang['LogicboxesEmail.client.description'] = 'Manage mailbox accounts for this service.';
 $lang['LogicboxesEmail.client.existing_accounts'] = 'Existing accounts';
@@ -167,3 +164,6 @@ $lang['LogicboxesEmail.provision.order_id_missing'] = 'The LogicBoxes order ID i
 $lang['LogicboxesEmail.provision.credentials_missing'] = 'LogicBoxes reseller credentials are missing.';
 $lang['LogicboxesEmail.provision.verify_usage_failed'] = 'Could not verify current mailbox usage. No change was made. %s';
 $lang['LogicboxesEmail.provision.accounts_in_use'] = 'The new plan allows %s mailbox(es), but %s mailbox(es) are currently created. Delete the extra mailbox(es) before reducing the plan.';
+$lang['LogicboxesEmail.manage.domain'] = 'Domain';
+$lang['LogicboxesEmail.manage.provider_error_persistent'] = 'We could not retrieve the mailbox list from the email provider. Please contact support if the problem persists.';
+$lang['LogicboxesEmail.dns.other'] = 'Other';
