@@ -3,7 +3,7 @@ $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTI
 ?>
 <div class="logicboxes-email-client">
     <h3>Email accounts</h3>
-    <p>Manage mailbox accounts and forwarding-only addresses for this service.</p>
+    <p>Manage mailbox accounts for this service.</p>
     <?php if (!empty($message)) { ?><div class="alert alert-success"><?php echo $e($message); ?></div><?php } ?>
     <?php if (!empty($error)) { ?><div class="alert alert-danger"><?php echo $e($error); ?></div><?php } ?>
 
@@ -92,24 +92,4 @@ $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTI
         <button class="btn btn-primary" type="submit">Create mailbox</button>
     <?php echo $this->Form->end(); ?>
 
-    <hr>
-
-    <h4>Create forwarding-only address</h4>
-    <p>Forwarding-only addresses do not consume a full mailbox license.</p>
-    <?php echo $this->Form->create(null, ['method' => 'post']); ?>
-        <input type="hidden" name="email_action" value="add_forward">
-        <div class="form-group">
-            <label for="forward_local_part">Forward address username</label>
-            <div class="input-group">
-                <input class="form-control" id="forward_local_part" name="forward_local_part" required pattern="[A-Za-z0-9._%+-]+">
-                <span class="input-group-addon">@<?php echo $e($domain); ?></span>
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="forwards">Destination email addresses</label>
-            <textarea class="form-control" id="forwards" name="forwards" rows="3" required placeholder="one@example.com, two@example.com"></textarea>
-            <span class="help-block">Separate multiple destinations with commas, semicolons or new lines.</span>
-        </div>
-        <button class="btn btn-default" type="submit">Create forward-only address</button>
-    <?php echo $this->Form->end(); ?>
 </div>
