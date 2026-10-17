@@ -71,7 +71,11 @@ trait ServiceTabsTrait
                             $accountsRaw = $getVal($details, ['emailaccounts', 'email-accounts', 'email_accounts', 'numberofemailaccounts', 'number-of-email-accounts']);
                             $blocksRaw = $this->extractStorageBlocksFromOrderDetails($details);
                             if (!is_numeric($blocksRaw)) {
-                                $this->logEmailDiagnostic('OrderBox details did not expose email_storage_5.quantity for import; order=' . $orderIdInput . '; top-level keys=' . implode(',', array_keys($details)) . '; details=' . json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                                // On a confirmed OrderBox order, an unreported storage add-on means
+                                // there are no separately purchased email_storage_5 blocks. Keep the
+                                // import usable for orders whose API details omit zero-quantity add-ons.
+                                $this->logEmailDiagnostic('OrderBox details omitted email_storage_5.quantity during import; treating storage blocks as 0; order=' . $orderIdInput . '; top-level keys=' . implode(',', array_keys($details)));
+                                $blocksRaw = 0;
                             }
                             $productMismatch = ($productInput === 'enterprise_email' && $providerProductKey !== '' && strpos($providerProductKey, 'enterprise') === false)
                                 || ($productInput === 'business_email' && $providerProductKey !== '' && strpos($providerProductKey, 'enterprise') !== false);
