@@ -4,24 +4,24 @@ $e = static function ($value) {
 };
 ?>
 <div class="logicboxes-email-client">
-    <h3><?= $e(Language::_('LogicboxesEmail.client.email_accounts_title', true)) ?></h3>
-    <p><?= $e(Language::_('LogicboxesEmail.client.description', true)) ?></p>
+    <h3><?= $e($this->_('LogicboxesEmail.client.email_accounts_title', true)) ?></h3>
+    <p><?= $e($this->_('LogicboxesEmail.client.description', true)) ?></p>
     <?php if (!empty($message)) { ?><div class="alert alert-success"><?php echo $e($message); ?></div><?php } ?>
     <?php if (!empty($error)) { ?><div class="alert alert-danger"><?php echo $e($error); ?></div><?php } ?>
 
-    <h4><?= $e(Language::_('LogicboxesEmail.client.existing_accounts', true)) ?></h4>
+    <h4><?= $e($this->_('LogicboxesEmail.client.existing_accounts', true)) ?></h4>
     <div class="table-responsive">
         <table class="table table-striped">
             <thead><tr>
-                <th><?= $e(Language::_('LogicboxesEmail.client.column_email', true)) ?></th>
-                <th><?= $e(Language::_('LogicboxesEmail.client.column_status', true)) ?></th>
-                <th><?= $e(Language::_('LogicboxesEmail.client.column_type', true)) ?></th>
-                <th><?= $e(Language::_('LogicboxesEmail.client.column_usage_quota', true)) ?></th>
-                <th><?= $e(Language::_('LogicboxesEmail.client.column_actions', true)) ?></th>
+                <th><?= $e($this->_('LogicboxesEmail.client.column_email', true)) ?></th>
+                <th><?= $e($this->_('LogicboxesEmail.client.column_status', true)) ?></th>
+                <th><?= $e($this->_('LogicboxesEmail.client.column_type', true)) ?></th>
+                <th><?= $e($this->_('LogicboxesEmail.client.column_usage_quota', true)) ?></th>
+                <th><?= $e($this->_('LogicboxesEmail.client.column_actions', true)) ?></th>
             </tr></thead>
             <tbody>
             <?php if (empty($users)) { ?>
-                <tr><td colspan="5"><?= $e(Language::_('LogicboxesEmail.client.no_accounts', true)) ?></td></tr>
+                <tr><td colspan="5"><?= $e($this->_('LogicboxesEmail.client.no_accounts', true)) ?></td></tr>
             <?php } else { foreach ($users as $user) {
                 $email = $user['emailAddress'] ?? $user['user.email'] ?? $user['email'] ?? $user['username'] ?? $user['user.username'] ?? '';
                 $status = $user['status'] ?? $user['user.status'] ?? '—';
@@ -47,7 +47,7 @@ $e = static function ($value) {
                 $usedFormatted = $formatQuotaKb($used);
                 $quotaFormatted = $formatQuotaKb($quota);
                 $usage = $usedFormatted . ($quota !== '' && is_numeric($quota) ? ' / ' . $quotaFormatted : '');
-                $confirmDelete = sprintf(Language::_('LogicboxesEmail.client.confirm_delete', true), $email);
+                $confirmDelete = sprintf($this->_('LogicboxesEmail.client.confirm_delete', true), $email);
             ?>
                 <tr>
                     <td><?= $e($email ?: '—') ?></td>
@@ -57,7 +57,7 @@ $e = static function ($value) {
                     <td><?php if ($email) { echo $this->Form->create(null, ['method' => 'post']); ?>
                         <input type="hidden" name="email_action" value="delete_user">
                         <input type="hidden" name="email" value="<?= $e($email) ?>">
-                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm(<?= $e(json_encode($confirmDelete, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP)) ?>);"><?= $e(Language::_('LogicboxesEmail.client.delete', true)) ?></button>
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm(<?= $e(json_encode($confirmDelete, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP)) ?>);"><?= $e($this->_('LogicboxesEmail.client.delete', true)) ?></button>
                     <?php echo $this->Form->end(); } ?></td>
                 </tr>
             <?php }} ?>
@@ -65,37 +65,37 @@ $e = static function ($value) {
         </table>
     </div>
 
-    <h4><?= $e(Language::_('LogicboxesEmail.client.create_mailbox', true)) ?></h4>
-    <p><?= $e(sprintf(Language::_('LogicboxesEmail.client.mailbox_capacity', true), (int)$max_mailboxes)) ?></p>
+    <h4><?= $e($this->_('LogicboxesEmail.client.create_mailbox', true)) ?></h4>
+    <p><?= $e(sprintf($this->_('LogicboxesEmail.client.mailbox_capacity', true), (int)$max_mailboxes)) ?></p>
     <?php echo $this->Form->create(null, ['method' => 'post']); ?>
         <input type="hidden" name="email_action" value="add_mailbox">
         <div class="form-group">
-            <label for="local_part"><?= $e(Language::_('LogicboxesEmail.client.email_username', true)) ?></label>
+            <label for="local_part"><?= $e($this->_('LogicboxesEmail.client.email_username', true)) ?></label>
             <div class="input-group">
                 <input class="form-control" id="local_part" name="local_part" required pattern="[A-Za-z0-9._%+-]+">
                 <span class="input-group-addon">@<?= $e($domain) ?></span>
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6 form-group"><label for="first_name"><?= $e(Language::_('LogicboxesEmail.client.first_name', true)) ?></label><input class="form-control" id="first_name" name="first_name" required></div>
-            <div class="col-md-6 form-group"><label for="last_name"><?= $e(Language::_('LogicboxesEmail.client.last_name', true)) ?></label><input class="form-control" id="last_name" name="last_name" required></div>
+            <div class="col-md-6 form-group"><label for="first_name"><?= $e($this->_('LogicboxesEmail.client.first_name', true)) ?></label><input class="form-control" id="first_name" name="first_name" required></div>
+            <div class="col-md-6 form-group"><label for="last_name"><?= $e($this->_('LogicboxesEmail.client.last_name', true)) ?></label><input class="form-control" id="last_name" name="last_name" required></div>
         </div>
-        <div class="form-group"><label for="password"><?= $e(Language::_('LogicboxesEmail.client.initial_password', true)) ?></label><input class="form-control" id="password" name="password" type="password" minlength="8" required autocomplete="new-password"></div>
-        <div class="form-group"><label for="notification_email"><?= $e(Language::_('LogicboxesEmail.client.notification_email', true)) ?></label><input class="form-control" id="notification_email" name="notification_email" type="email" required></div>
+        <div class="form-group"><label for="password"><?= $e($this->_('LogicboxesEmail.client.initial_password', true)) ?></label><input class="form-control" id="password" name="password" type="password" minlength="8" required autocomplete="new-password"></div>
+        <div class="form-group"><label for="notification_email"><?= $e($this->_('LogicboxesEmail.client.notification_email', true)) ?></label><input class="form-control" id="notification_email" name="notification_email" type="email" required></div>
         <div class="row">
-            <div class="col-md-6 form-group"><label for="country_code"><?= $e(Language::_('LogicboxesEmail.client.country_code', true)) ?></label><input class="form-control" id="country_code" name="country_code" value="PT" maxlength="2" required></div>
+            <div class="col-md-6 form-group"><label for="country_code"><?= $e($this->_('LogicboxesEmail.client.country_code', true)) ?></label><input class="form-control" id="country_code" name="country_code" value="PT" maxlength="2" required></div>
             <div class="col-md-6 form-group">
-                <label for="language_code"><?= $e(Language::_('LogicboxesEmail.client.language', true)) ?></label>
+                <label for="language_code"><?= $e($this->_('LogicboxesEmail.client.language', true)) ?></label>
                 <select class="form-control" id="language_code" name="language_code">
-                    <option value="en"><?= $e(Language::_('LogicboxesEmail.client.language_english', true)) ?></option>
-                    <option value="pt"><?= $e(Language::_('LogicboxesEmail.client.language_portuguese', true)) ?></option>
-                    <option value="es"><?= $e(Language::_('LogicboxesEmail.client.language_spanish', true)) ?></option>
-                    <option value="zh-CN"><?= $e(Language::_('LogicboxesEmail.client.language_chinese_simplified', true)) ?></option>
-                    <option value="tr"><?= $e(Language::_('LogicboxesEmail.client.language_turkish', true)) ?></option>
-                    <option value="ru"><?= $e(Language::_('LogicboxesEmail.client.language_russian', true)) ?></option>
+                    <option value="en"><?= $e($this->_('LogicboxesEmail.client.language_english', true)) ?></option>
+                    <option value="pt"><?= $e($this->_('LogicboxesEmail.client.language_portuguese', true)) ?></option>
+                    <option value="es"><?= $e($this->_('LogicboxesEmail.client.language_spanish', true)) ?></option>
+                    <option value="zh-CN"><?= $e($this->_('LogicboxesEmail.client.language_chinese_simplified', true)) ?></option>
+                    <option value="tr"><?= $e($this->_('LogicboxesEmail.client.language_turkish', true)) ?></option>
+                    <option value="ru"><?= $e($this->_('LogicboxesEmail.client.language_russian', true)) ?></option>
                 </select>
             </div>
         </div>
-        <button class="btn btn-primary" type="submit"><?= $e(Language::_('LogicboxesEmail.client.create_mailbox_button', true)) ?></button>
+        <button class="btn btn-primary" type="submit"><?= $e($this->_('LogicboxesEmail.client.create_mailbox_button', true)) ?></button>
     <?php echo $this->Form->end(); ?>
 </div>
