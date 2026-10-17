@@ -64,7 +64,7 @@ class LogicboxesEmail extends Module
 
     public function getVersion()
     {
-        return '0.5.11';
+        return '0.5.12';
     }
 
     public function getAuthors()
@@ -175,12 +175,23 @@ class LogicboxesEmail extends Module
                     $paidForService = false;
                     try {
                         $clientId = (int)($fullService->client_id ?? 0);
-                        // Blesta provides a service-specific invoice query. Use it
-                        // instead of scanning a client's generic invoice list, which
-                        // can return no records for this service in some versions.
+                        // First ask Blesta for closed invoices associated with this service.
+                        // In some upgrade flows the association is not returned by
+                        // getAllWithService(), so fall back to this client's closed invoices
+                        // and verify the invoice line item actually references this service.
+                        $relatedInvoices = [];
                         if (method_exists($this->Invoices, 'getAllWithService')) {
                             $relatedInvoices = $this->Invoices->getAllWithService($serviceId, $clientId ?: null, 'closed');
-                        } else {
+                        }
+                        if (is_object($relatedInvoices)) {
+                            foreach (['invoices', 'results', 'records'] as $property) {
+                                if (isset($relatedInvoices->{$property}) && is_array($relatedInvoices->{$property})) {
+                                    $relatedInvoices = $relatedInvoices->{$property};
+                                    break;
+                                }
+                            }
+                        }
+                        if (!is_array($relatedInvoices) || count($relatedInvoices) === 0) {
                             $relatedInvoices = $this->Invoices->getAll($clientId ?: null, 'closed');
                         }
                         if (is_object($relatedInvoices)) {
@@ -197,13 +208,33 @@ class LogicboxesEmail extends Module
                             $status = strtolower(trim((string)($invoice->status ?? $invoice->status_name ?? 'closed')));
                             if (!in_array($status, ['closed', 'paid'], true)) continue;
                             $invoiceId = (int)($invoice->id ?? $invoice->id_code ?? $invoice->invoice_id ?? 0);
-                            if ($invoiceId > 0) {
+                            if ($invoiceId < 1) continue;
+
+                            // For the service-specific query, the association itself is enough.
+                            $isRelated = false;
+                            if (method_exists($this->Invoices, 'getAllWithService')
+                                && isset($invoice->id)
+                                && is_array($this->Invoices->getAllWithService($serviceId, $clientId ?: null, 'closed'))) {
+                                $isRelated = true;
+                            }
+                            // Confirm relation against actual invoice lines for fallback results.
+                            if (!$isRelated) {
+                                foreach ((array)$this->Invoices->getLineItems($invoiceId) as $line) {
+                                    if (!is_object($line)) $line = (object)$line;
+                                    $lineServiceId = (int)($line->service_id ?? $line->service_id_code ?? $line->rel_id ?? 0);
+                                    if ($lineServiceId === $serviceId) {
+                                        $isRelated = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if ($isRelated) {
                                 $paidForService = true;
                                 $this->logEmailDiagnostic('Found closed invoice ' . $invoiceId . ' for deferred service ' . $serviceId . ' (status=' . $status . ').');
                                 break;
                             }
                         }
-                        $this->logEmailDiagnostic('Deferred service ' . $serviceId . ': service-specific invoice query returned ' . $invoiceCount . ' invoice record(s); paid match=' . ($paidForService ? 'yes' : 'no') . '.');
+                        $this->logEmailDiagnostic('Deferred service ' . $serviceId . ': checked ' . $invoiceCount . ' closed invoice record(s); paid match=' . ($paidForService ? 'yes' : 'no') . '.');
                     } catch (Throwable $e) {
                         $this->logEmailDiagnostic('Could not verify paid invoice for deferred service ' . $serviceId . ': ' . $e->getMessage());
                     }
@@ -213,10 +244,17 @@ class LogicboxesEmail extends Module
                             // service instead of a top-level package_id.
                             $packageId = (int)($fullService->package_id ?? $fullService->package->id ?? 0);
                             $package = $packageId > 0 ? $this->Packages->get($packageId) : null;
+                            if (!$package && !empty($fullService->pricing_id) && method_exists($this->Packages, 'getByPricingId')) {
+                                $package = $this->Packages->getByPricingId((int)$fullService->pricing_id);
+                            }
                             if (!$package && isset($fullService->package) && is_object($fullService->package)) {
                                 $package = $fullService->package;
+                                // Some Blesta service records wrap the package object once.
+                                if (isset($package->stdClass) && is_object($package->stdClass)) {
+                                    $package = $package->stdClass;
+                                }
                             }
-                            if (!$package) throw new RuntimeException('Could not load package for deferred service ' . $serviceId . '; package_id=' . $packageId . '.');
+                            if (!$package) throw new RuntimeException('Could not load package for deferred service ' . $serviceId . '; package_id=' . $packageId . '; pricing_id=' . (int)($fullService->pricing_id ?? 0) . '.');
                             $resultFields = $this->editService($package, $fullService, [
                                 'mailboxes' => (int)($fields->email_pending_accounts ?? $fields->email_accounts ?? 0),
                                 'extra storage' => (int)($fields->email_pending_storage_blocks ?? $fields->email_storage_blocks ?? 0),
