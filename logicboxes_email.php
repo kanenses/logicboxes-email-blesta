@@ -64,7 +64,7 @@ class LogicboxesEmail extends Module
 
     public function getVersion()
     {
-        return '0.5.9';
+        return '0.5.10';
     }
 
     public function getAuthors()
@@ -292,9 +292,13 @@ class LogicboxesEmail extends Module
     {
         $this->Input->setRules($this->getRowRules());
         if ($this->Input->validates($vars)) {
+            // Re-enable/recreate the synchronization task whenever the module
+            // account settings are saved. This repairs installations where the
+            // task registration failed during install/upgrade.
+            $this->registerSyncCronTask();
             return [
                 ['key' => 'account_name', 'value' => trim($vars['account_name']), 'encrypted' => 0],
-                ['key' => 'reseller_id', 'value' => trim($vars['reseller_id']), 'encrypted' => 0],
+                ['key' => 'reseller_id', 'value' => trim($vars['reseller_id']), 'encrypted' => 1],
                 ['key' => 'key', 'value' => $vars['key'], 'encrypted' => 1],
                 ['key' => 'sandbox', 'value' => !empty($vars['sandbox']) ? 'true' : 'false', 'encrypted' => 0]
             ];
