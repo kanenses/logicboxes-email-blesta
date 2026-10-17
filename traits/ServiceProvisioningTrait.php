@@ -522,7 +522,10 @@ $this->logEmailDiagnostic(
 
 	public function cancelService($package, $service, $parent_package = null, $parent_service = null)
 	{
+		// Temporary diagnostic: prove whether Blesta reaches this module hook.
+		$this->logEmailDiagnostic('cancelService entered: service_id=' . (int)($service->id ?? 0));
 		$fields = $this->serviceFieldsToObject($service->fields);
+		$this->logEmailDiagnostic('cancelService fields: service_id=' . (int)($service->id ?? 0) . '; order_id=' . (string)($fields->email_order_id ?? '(missing)') . '; product=' . (string)($fields->email_product ?? '(default business_email)'));
 
 		if (empty($fields->email_order_id)) {
 			$this->setModuleError(
@@ -552,6 +555,8 @@ $this->logEmailDiagnostic(
 			($fields->email_product ?? 'business_email') === 'enterprise_email'
 		) ? 'enterpriseemail/us' : 'eelite/us';
 
+		$this->logEmailDiagnostic('cancelService submitting provider delete: service_id=' . (int)($service->id ?? 0) . '; order_id=' . (string)$fields->email_order_id . '; endpoint=' . $prefix . '/delete');
+
 		$response = $api->submit(
 			$prefix . '/delete',
 			[
@@ -561,6 +566,7 @@ $this->logEmailDiagnostic(
 		);
 
 		$this->logApiResponse($api, $response);
+		$this->logEmailDiagnostic('cancelService provider delete response: service_id=' . (int)($service->id ?? 0) . '; order_id=' . (string)$fields->email_order_id . '; response_status=' . (string)$response->status());
 
 		if (!$this->isSuccessfulResponse($response)) {
 			$this->setModuleError(
