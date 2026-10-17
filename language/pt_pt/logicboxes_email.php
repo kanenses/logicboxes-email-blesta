@@ -167,3 +167,5 @@ $lang['LogicboxesEmail.manage.domain'] = 'Domínio';
 $lang['LogicboxesEmail.manage.provider_error_persistent'] = 'Não foi possível obter a lista de caixas de correio do fornecedor de email. Contacta o suporte se o problema persistir.';
 $lang['LogicboxesEmail.dns.other'] = 'Outros';
 $lang['LogicboxesEmail.provision.domain_placeholder'] = 'exemplo.pt';
+$lang['LogicboxesEmail.api.generic_error'] = 'A LogicBoxes devolveu um erro.';
+$lang['LogicboxesEmail.api.invalid_response'] = 'A LogicBoxes devolveu uma resposta inválida ou sem sucesso: %s';
