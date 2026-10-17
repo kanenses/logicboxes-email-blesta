@@ -64,7 +64,7 @@ class LogicboxesEmail extends Module
 
     public function getVersion()
     {
-        return '0.5.12';
+        return '0.6.0';
     }
 
     public function getAuthors()
