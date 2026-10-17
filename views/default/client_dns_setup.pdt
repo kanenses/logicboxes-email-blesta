@@ -10,7 +10,7 @@ foreach ($records as $record) {
     foreach (['type', 'record-type', 'record_type', 'recordType', 'dns-type', 'dns_type'] as $key) {
         if (isset($record[$key]) && is_scalar($record[$key])) { $type = strtoupper(trim((string)$record[$key])); break; }
     }
-    if ($type === '') $type = 'OUTROS';
+    if ($type === '') $type = Language::_('LogicboxesEmail.dns.other', true);
     $grouped[$type][] = $record;
 }
 ksort($grouped);
