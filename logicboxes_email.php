@@ -298,7 +298,7 @@ class LogicboxesEmail extends Module
             $this->registerSyncCronTask();
             return [
                 ['key' => 'account_name', 'value' => trim($vars['account_name']), 'encrypted' => 0],
-                ['key' => 'reseller_id', 'value' => trim($vars['reseller_id']), 'encrypted' => 1],
+                ['key' => 'reseller_id', 'value' => trim($vars['reseller_id']), 'encrypted' => 0],
                 ['key' => 'key', 'value' => $vars['key'], 'encrypted' => 1],
                 ['key' => 'sandbox', 'value' => !empty($vars['sandbox']) ? 'true' : 'false', 'encrypted' => 0]
             ];
