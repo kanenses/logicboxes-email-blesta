@@ -1,4 +1,4 @@
-# KanumHost LogicBoxes Email module 0.5.8
+# KanumHost LogicBoxes Email module 0.6.1
 
 Independent Blesta module for ResellerClub / LogicBoxes **Business Email** and **Enterprise Email** (US HTTP API).
 
