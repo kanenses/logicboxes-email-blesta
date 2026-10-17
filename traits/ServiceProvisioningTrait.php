@@ -107,7 +107,7 @@ trait ServiceProvisioningTrait
         $vars = (array)$vars;
         $row = $this->getModuleRow($package->module_row);
         if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
-            $this->setModuleError('config', 'No LogicBoxes account is configured for this package.');
+            $this->setModuleError('config', Language::_('LogicboxesEmail.provision.no_account', true));
             return;
         }
         $domain = strtolower($this->getDomainFromVars($vars));
@@ -122,7 +122,7 @@ trait ServiceProvisioningTrait
         $accounts = $this->getMailboxCount($vars, 1);
         $storageBlocks = $this->getStorageBlocks($vars);
         if ($accounts < 1 || $accounts > 10000) {
-            $this->setModuleError('mailboxes', 'Mailbox quantity must be between 1 and 10000.');
+            $this->setModuleError('mailboxes', Language::_('LogicboxesEmail.provision.mailbox_range', true));
             return;
         }
         $months = 1;
@@ -148,7 +148,7 @@ trait ServiceProvisioningTrait
             Loader::loadModels($this, ['Clients', 'Contacts']);
             $client = $this->Clients->get($vars['client_id'] ?? null);
             if (!$client) {
-                $this->setModuleError('client', 'Could not load the Blesta client for this email service.');
+                $this->setModuleError('client', Language::_('LogicboxesEmail.provision.client_load_failed', true));
                 return;
             }
             $api = $this->getLogicboxesApi($row->meta->reseller_id, $row->meta->key, ($row->meta->sandbox ?? 'false') === 'true');
@@ -156,7 +156,7 @@ trait ServiceProvisioningTrait
             $customerId = is_array($customerInfo) ? (string)($customerInfo['customer_id'] ?? '') : '';
             $customerPassword = is_array($customerInfo) ? (string)($customerInfo['password'] ?? '') : '';
             if ($customerId === '') {
-                $this->setModuleError('customer', 'LogicBoxes customer lookup/creation failed; see the Blesta module log for the API response.');
+                $this->setModuleError('customer', Language::_('LogicboxesEmail.provision.customer_failed', true));
                 return;
             }
             $api = $this->getLogicboxesApi($row->meta->reseller_id, $row->meta->key, ($row->meta->sandbox ?? 'false') === 'true');
@@ -310,7 +310,7 @@ $this->logEmailDiagnostic(
                 $detailsResponse = $baselineApi->submit($prefix . '/details', ['order-id' => $orderId], 'GET');
                 $this->logApiResponse($baselineApi, $detailsResponse);
                 if (!$this->isSuccessfulResponse($detailsResponse)) {
-                    $this->setModuleError('order_details', 'Could not read the current LogicBoxes order. No change was submitted. ' . $this->responseError($detailsResponse));
+                    $this->setModuleError('order_details', sprintf(Language::_('LogicboxesEmail.provision.order_read_failed', true), $this->responseError($detailsResponse)));
                     return;
                 }
                 $details = $detailsResponse->response();
@@ -329,7 +329,7 @@ $this->logEmailDiagnostic(
                     || ($actionType !== '' && $actionCompleted === 'false');
                 if ($hasPendingAction) {
                     $this->logEmailDiagnostic('Rejected configurable-option edit for service ' . (int)($service->id ?? 0) . ': OrderBox action still in progress (actiontype=' . $actionType . ', actionstatus=' . $actionStatus . ', actioncompleted=' . $actionCompleted . ').');
-                    $this->setModuleError('order_action_pending', 'A previous operation is still being processed by the email provider. Please wait a few minutes and try again. No new change was submitted.');
+                    $this->setModuleError('order_action_pending', Language::_('LogicboxesEmail.provision.operation_pending', true));
                     return;
                 }
 
@@ -337,7 +337,7 @@ $this->logEmailDiagnostic(
                 if ($providerAccounts !== '' && is_numeric($providerAccounts)) {
                     $currentAccounts = (int)$providerAccounts;
                 } else {
-                    $this->setModuleError('order_details', 'OrderBox did not return the contracted mailbox count. No change was submitted to avoid removing the wrong number of licenses.');
+                    $this->setModuleError('order_details', Language::_('LogicboxesEmail.provision.order_mailbox_count_missing', true));
                     return;
                 }
                 $storageQty = $this->extractStorageBlocksFromOrderDetails($details);
@@ -348,7 +348,7 @@ $this->logEmailDiagnostic(
                 }
             } catch (Throwable $e) {
                 $this->logEmailDiagnostic('Could not read OrderBox order details before configurable-option change: ' . $e->getMessage());
-                $this->setModuleError('order_details', 'Could not verify the current OrderBox mailbox count. No change was submitted.');
+                $this->setModuleError('order_details', Language::_('LogicboxesEmail.provision.verify_mailbox_count_failed', true));
                 return;
             }
         }
@@ -378,7 +378,7 @@ $this->logEmailDiagnostic(
         // Storage downgrades use the provider's addon/delete operation for the selected product.
         // Let OrderBox validate support and surface its real API response instead of blocking Enterprise Email here.
         if ($newAccounts < 1 || $newAccounts > 10000) {
-            $this->setModuleError('mailboxes', 'Mailbox quantity must be between 1 and 10000.');
+            $this->setModuleError('mailboxes', Language::_('LogicboxesEmail.provision.mailbox_range', true));
             return;
         }
 
@@ -388,12 +388,12 @@ $this->logEmailDiagnostic(
             && ($vars['use_module'] === 'true' || $vars['use_module'] === true || $vars['use_module'] === 1 || $vars['use_module'] === '1');
         if ($useModule && ($addAccounts !== 0 || $addBlocks !== 0)) {
             if ($orderId === '') {
-                $this->setModuleError('order_id', 'The LogicBoxes order ID is missing from this service.');
+                $this->setModuleError('order_id', Language::_('LogicboxesEmail.provision.order_id_missing', true));
                 return;
             }
             $row = $this->getModuleRow($package->module_row);
             if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
-                $this->setModuleError('config', 'No LogicBoxes account is configured for this package.');
+                $this->setModuleError('config', Language::_('LogicboxesEmail.provision.no_account', true));
                 return;
             }
             try {
@@ -442,7 +442,7 @@ $this->logEmailDiagnostic(
                     // Keep a safety check only when the new plan would be below actual mailboxes.
                     $countResponse = $api->submit('mail/users/search', ['order-id' => $orderId, 'page-no' => 1], 'GET');
                     if (!$this->isSuccessfulResponse($countResponse)) {
-                        $this->setModuleError('verify_accounts', 'Could not verify current mailbox usage. No change was made. ' . $this->responseError($countResponse));
+                        $this->setModuleError('verify_accounts', sprintf(Language::_('LogicboxesEmail.provision.verify_usage_failed', true), $this->responseError($countResponse)));
                         return;
                     }
                     $mailboxCount = 0;
@@ -451,7 +451,7 @@ $this->logEmailDiagnostic(
                         if ($type === '' || strpos($type, 'forward') === false) $mailboxCount++;
                     }
                     if ($mailboxCount > $newAccounts) {
-                        $this->setModuleError('accounts_in_use', 'The new plan allows ' . $newAccounts . ' mailbox(es), but ' . $mailboxCount . ' mailbox(es) are currently created. Delete the extra mailbox(es) before reducing the plan.');
+                        $this->setModuleError('accounts_in_use', sprintf(Language::_('LogicboxesEmail.provision.accounts_in_use', true), $newAccounts, $mailboxCount));
                         return;
                     }
                     $response = $api->submit($prefix . '/delete-email-account', [
@@ -527,7 +527,7 @@ $this->logEmailDiagnostic(
 		if (empty($fields->email_order_id)) {
 			$this->setModuleError(
 				'order_id',
-				'The LogicBoxes order ID is missing from this service.'
+				Language::_('LogicboxesEmail.provision.order_id_missing', true)
 			);
 			return;
 		}
@@ -537,7 +537,7 @@ $this->logEmailDiagnostic(
 		if (!$row || empty($row->meta->reseller_id) || empty($row->meta->key)) {
 			$this->setModuleError(
 				'cancel',
-				'LogicBoxes reseller credentials are missing.'
+				Language::_('LogicboxesEmail.provision.credentials_missing', true)
 			);
 			return;
 		}
@@ -576,7 +576,7 @@ $this->logEmailDiagnostic(
     {
         $fields = $this->serviceFieldsToObject($service->fields);
         if (empty($fields->email_order_id)) {
-            $this->setModuleError('order_id', 'The LogicBoxes order ID is missing from this service.');
+            $this->setModuleError('order_id', Language::_('LogicboxesEmail.provision.order_id_missing', true));
             return;
         }
         $months = 1;
