@@ -40,9 +40,9 @@
                 'id' => 'key',
                 'class' => 'form-control',
                 'autocomplete' => 'new-password',
-                'placeholder' => 'Leave blank to keep the current API key',
+                'placeholder' => $this->_('LogicboxesEmail.edit.key_placeholder', true),
             ]); ?>
-            <small class="text-muted">Leave blank to keep the existing key. Enter a new key only to rotate it.</small>
+            <small class="text-muted"><?php $this->_('LogicboxesEmail.edit.key_help'); ?></small>
         </div>
 
         <div class="mb-3">
