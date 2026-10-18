@@ -542,29 +542,42 @@ trait ServiceTabsTrait
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         }).then(function (response) {
             return response.text().then(function (html) {
-                return {ok: response.ok, url: response.url, html: html};
+                return {ok: response.ok, status: response.status, url: response.url, html: html};
             });
         }).then(function (result) {
             var doc = new DOMParser().parseFromString(result.html, 'text/html');
             var link = doc.querySelector('a.logicboxes-email-panel-launch');
             if (result.ok && link) {
-                var destination = new URL(link.getAttribute('href'), result.url);
-                if (destination.protocol === 'https:') {
-                    popup.location.replace(destination.href);
-                    return;
+                try {
+                    var destination = new URL(link.getAttribute('href'), result.url);
+                    if (destination.protocol === 'https:' && destination.hostname) {
+                        popup.location.replace(destination.href);
+                        return;
+                    }
+                } catch (error) {
+                    // Show a diagnostic below if the URL is malformed.
                 }
             }
 
-            var error = doc.querySelector('.logicboxes-email-control-panel .alert-danger, .logicboxes-email-control-panel .alert-warning, .alert-danger');
-            var message = error ? error.textContent.trim() : 'Não foi possível preparar o acesso ao painel. Fecha esta janela e tenta novamente.';
-            ui = showPopupMessage(popup, 'Não foi possível abrir o painel', message.slice(0, 500));
+            var errorNode = doc.querySelector('.logicboxes-email-control-panel .alert-danger, .logicboxes-email-control-panel .alert-warning, .alert-danger');
+            var message;
+            if (errorNode && errorNode.textContent.trim()) {
+                message = errorNode.textContent.trim();
+            } else if (!result.ok) {
+                message = 'O pedido ao Blesta falhou (HTTP ' + result.status + ').';
+            } else if (!link) {
+                message = 'O Blesta respondeu, mas não devolveu o link de acesso ao OrderBox.';
+            } else {
+                message = 'O Blesta devolveu um link de acesso inválido.';
+            }
+            ui = showPopupMessage(popup, 'Não foi possível abrir o painel', message + ' Fecha esta janela e tenta novamente.');
             if (ui) {
                 ui.spinner.hidden = true;
                 ui.close.hidden = false;
                 ui.close.addEventListener('click', function () { popup.close(); });
             }
         }).catch(function () {
-            ui = showPopupMessage(popup, 'Falha na ligação', 'Não foi possível concluir o acesso. Fecha esta janela e tenta novamente.');
+            ui = showPopupMessage(popup, 'Falha na ligação', 'O pedido falhou antes de obter o link do painel. Verifica a ligação e tenta novamente.');
             if (ui) {
                 ui.spinner.hidden = true;
                 ui.close.hidden = false;
