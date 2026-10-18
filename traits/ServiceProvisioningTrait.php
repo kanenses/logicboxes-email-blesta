@@ -189,7 +189,7 @@ trait ServiceProvisioningTrait
                 $this->logApiResponse($api, $storageResponse);
                 if (!$this->isSuccessfulResponse($storageResponse)) {
                     // Keep the created order linked in Blesta to avoid duplicate order creation on retry.
-                    $this->logEmailDiagnostic('WARNING: email order ' . $orderId . ' was created but adding ' . $storageBlocks . ' storage block(s) failed: ' . $this->responseError($storageResponse));
+                    $this->logEmailDiagnostic('Email order ' . $orderId . ' was created, but adding ' . $storageBlocks . ' storage block(s) failed: ' . $this->responseError($storageResponse), 'warning');
                 }
             }
             return [
