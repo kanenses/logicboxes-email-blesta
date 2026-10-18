@@ -491,6 +491,87 @@ trait ServiceTabsTrait
                 }
             }
             $output .= '</section>';
+            $output .= <<<'HTML'
+<script>
+(function () {
+    if (window.logicboxesEmailPanelHandlerReady) return;
+    window.logicboxesEmailPanelHandlerReady = true;
+
+    function showPopupMessage(popup, title, message) {
+        try {
+            popup.document.open();
+            popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KanumHost</title><style>body{margin:0;background:#f5f7fa;color:#202938;font:15px/1.5 Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center}.card{box-sizing:border-box;width:min(440px,calc(100% - 32px));padding:32px;background:#fff;border:1px solid #e3e7ed;border-radius:12px;box-shadow:0 8px 28px rgba(20,35,55,.08);text-align:center}.brand{font-weight:700;font-size:20px;color:#172b4d;margin-bottom:20px}.spinner{width:28px;height:28px;margin:0 auto 18px;border:3px solid #dce3ec;border-top-color:#2463eb;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:18px;margin:0 0 10px}p{margin:0;color:#596579}button{margin-top:20px;padding:9px 16px;border:0;border-radius:6px;background:#245de8;color:white;cursor:pointer}</style></head><body><main class="card"><div class="brand">KanumHost</div><div class="spinner" id="spinner"></div><h1 id="title">A ligar ao painel…</h1><p id="message">Estamos a preparar o acesso seguro. Aguarda, por favor.</p><button id="close" type="button" hidden>Fechar janela</button></main></body></html>');
+            popup.document.close();
+            return {
+                title: popup.document.getElementById('title'),
+                message: popup.document.getElementById('message'),
+                spinner: popup.document.getElementById('spinner'),
+                close: popup.document.getElementById('close')
+            };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form || !form.matches || !form.matches('form.logicboxes-email-panel-request')) return;
+        if (!window.fetch || !window.FormData || !window.DOMParser) return;
+
+        event.preventDefault();
+        var popup = window.open('', 'logicboxesEmailPanel', 'width=900,height=650,resizable=yes,scrollbars=yes');
+        if (!popup) {
+            window.alert('Permite pop-ups para abrir o painel de email ou DNS.');
+            return;
+        }
+
+        var ui = showPopupMessage(popup, 'A ligar ao painel…', 'Estamos a preparar o acesso seguro. Aguarda, por favor.');
+        if (!ui) {
+            popup.close();
+            window.alert('Não foi possível abrir a janela de ligação. Tenta novamente.');
+            return;
+        }
+
+        fetch(form.action || window.location.href, {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function (response) {
+            return response.text().then(function (html) {
+                return {ok: response.ok, url: response.url, html: html};
+            });
+        }).then(function (result) {
+            var doc = new DOMParser().parseFromString(result.html, 'text/html');
+            var link = doc.querySelector('a.logicboxes-email-panel-launch');
+            if (result.ok && link) {
+                var destination = new URL(link.getAttribute('href'), result.url);
+                if (destination.protocol === 'https:') {
+                    popup.location.replace(destination.href);
+                    return;
+                }
+            }
+
+            var error = doc.querySelector('.logicboxes-email-control-panel .alert-danger, .logicboxes-email-control-panel .alert-warning, .alert-danger');
+            var message = error ? error.textContent.trim() : 'Não foi possível preparar o acesso ao painel. Fecha esta janela e tenta novamente.';
+            ui = showPopupMessage(popup, 'Não foi possível abrir o painel', message.slice(0, 500));
+            if (ui) {
+                ui.spinner.hidden = true;
+                ui.close.hidden = false;
+                ui.close.addEventListener('click', function () { popup.close(); });
+            }
+        }).catch(function () {
+            ui = showPopupMessage(popup, 'Falha na ligação', 'Não foi possível concluir o acesso. Fecha esta janela e tenta novamente.');
+            if (ui) {
+                ui.spinner.hidden = true;
+                ui.close.hidden = false;
+                ui.close.addEventListener('click', function () { popup.close(); });
+            }
+        });
+    });
+})();
+</script>
+HTML;
 
         }
 
