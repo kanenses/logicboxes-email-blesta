@@ -133,40 +133,37 @@ trait LogicboxesApiSupportTrait
         $this->Input->setErrors(['module' => [$key => (string)$message]]);
     }
 
+    /**
+     * Record API failures only. Successful calls are frequent during tab refreshes
+     * and reconciliation, so logging every request creates noise and stores data
+     * from provider responses unnecessarily.
+     */
     private function logApiResponse($api, $response)
     {
+        try {
+            if ($this->isSuccessfulResponse($response)) {
+                return;
+            }
+        } catch (Throwable $e) {
+            // Treat an unreadable response as a failure, but never dump its contents.
+        }
+
         $request = $api->lastRequest();
         $url = (string)($request['url'] ?? 'LogicBoxes API');
-        $args = (isset($request['args']) && is_array($request['args'])) ? $request['args'] : [];
+        $path = parse_url($url, PHP_URL_PATH);
+        $endpoint = is_string($path) && $path !== '' ? $path : 'LogicBoxes API';
 
-        // Never persist API credentials or passwords in module logs.
-        foreach (['api-key', 'passwd', 'password', 'auth-token', 'auth_token', 'token'] as $secretKey) {
-            if (array_key_exists($secretKey, $args)) {
-                $args[$secretKey] = '********';
-            }
-        }
-
+        // Do not write request parameters or raw response bodies: they may contain
+        // customer identifiers, mailbox addresses, authentication tokens, or other PII.
         try {
-            $successful = $this->isSuccessfulResponse($response);
+            $this->log($url, 'API request failed; parameters redacted.', 'input', false);
+            $this->log($url, 'API response failed; body omitted.', 'output', false);
         } catch (Throwable $e) {
-            $successful = false;
+            // Logging must never mask the original API error.
         }
 
-        $inputData = json_encode($args, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        if ($inputData === false) {
-            $inputData = serialize($args);
-        }
-        $outputData = substr((string)$response->raw(), 0, 10000);
-
-        // Use Blesta's native Module::log() helper, as documented for modules.
-        // It writes directly to System > Logs > Module and pairs entries by URL/group.
-        $this->log($url, $inputData, 'input', $successful);
-        $this->log($url, $outputData, 'output', $successful);
-
-        // Keep genuine API failures visible in the system error log as well.
-        if (!$successful) {
-            $this->logEmailDiagnostic('API request failed: ' . $url . ' request=' . $inputData . ' response=' . substr($outputData, 0, 2000));
-        }
+        $message = 'API request failed at ' . $endpoint . ': ' . $this->responseError($response);
+        $this->logEmailDiagnostic($message);
     }
 
     public function validateConnection($key, $reseller_id, $sandbox)
@@ -316,10 +313,23 @@ trait LogicboxesApiSupportTrait
     private function logEmailDiagnostic($message)
     {
         try {
+            $message = substr((string)$message, 0, 1000);
+
+            // Sanitize common secret formats and client email addresses before logs are persisted.
+            $message = preg_replace(
+                '/(["\\']?(?:api-key|auth-userid|auth-token|auth_token|passwd|password|token)["\\']?\\s*[:=]\\s*["\\']?)[^"\\'\\s&,;}]+/i',
+                '$1[REDACTED]',
+                $message
+            );
+            $message = preg_replace(
+                '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i',
+                '[email-redacted]',
+                $message
+            );
+
             $logger = $this->getFromContainer('logger');
             $logger->error('[LogicBoxes Email] ' . $message);
         } catch (Throwable $e) {
             // Do not mask the original connection failure.
         }
-    }
-}
+    }}
