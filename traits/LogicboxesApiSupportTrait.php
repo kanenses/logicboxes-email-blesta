@@ -123,7 +123,7 @@ trait LogicboxesApiSupportTrait
         }
         $error = $response->errors();
         if (is_object($error)) return (string)($error->message ?? $error->error ?? $error->actionstatusdesc ?? Language::_('LogicboxesEmail.api.generic_error', true));
-        return sprintf(Language::_('LogicboxesEmail.api.invalid_response', true), substr((string)$response->raw(), 0, 500));
+        return sprintf(Language::_('LogicboxesEmail.api.invalid_response', true), 'the provider returned an empty or invalid response');
     }
 
     private function setModuleError($key, $message)
