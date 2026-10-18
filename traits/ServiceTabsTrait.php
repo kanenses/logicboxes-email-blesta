@@ -541,11 +541,48 @@ trait ServiceTabsTrait
             credentials: 'same-origin',
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         }).then(function (response) {
-            return response.text().then(function (html) {
-                return {ok: response.ok, status: response.status, url: response.url, html: html};
+            var contentType = response.headers.get('content-type') || '';
+            return response.text().then(function (body) {
+                var payload = body;
+                if (contentType.indexOf('application/json') !== -1) {
+                    try { payload = JSON.parse(body); } catch (error) { payload = body; }
+                }
+                return {ok: response.ok, status: response.status, url: response.url, payload: payload};
             });
         }).then(function (result) {
-            var doc = new DOMParser().parseFromString(result.html, 'text/html');
+            // Blesta may wrap AJAX output in JSON instead of returning the rendered
+            // tab HTML directly. Find the HTML fragment containing the panel link.
+            function findPanelHtml(value, depth) {
+                if (depth > 8 || value === null || typeof value === 'undefined') return '';
+                if (typeof value === 'string') {
+                    if (value.indexOf('logicboxes-email-panel-launch') !== -1 ||
+                        value.indexOf('logicboxes-email-control-panel') !== -1 ||
+                        value.indexOf('<!DOCTYPE') !== -1 || value.indexOf('<html') !== -1) return value;
+                    try {
+                        var parsed = JSON.parse(value);
+                        if (parsed && typeof parsed === 'object') return findPanelHtml(parsed, depth + 1);
+                    } catch (ignore) {}
+                    return '';
+                }
+                if (typeof value === 'object') {
+                    var keys = ['content', 'html', 'response', 'data', 'output', 'tabContent'];
+                    for (var i = 0; i < keys.length; i++) {
+                        if (Object.prototype.hasOwnProperty.call(value, keys[i])) {
+                            var found = findPanelHtml(value[keys[i]], depth + 1);
+                            if (found) return found;
+                        }
+                    }
+                    for (var key in value) {
+                        if (Object.prototype.hasOwnProperty.call(value, key)) {
+                            var nested = findPanelHtml(value[key], depth + 1);
+                            if (nested) return nested;
+                        }
+                    }
+                }
+                return '';
+            }
+            var html = findPanelHtml(result.payload, 0);
+            var doc = new DOMParser().parseFromString(html || '', 'text/html');
             var link = doc.querySelector('a.logicboxes-email-panel-launch');
             if (result.ok && link) {
                 try {
