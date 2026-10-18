@@ -89,6 +89,9 @@ class LogicboxesApi
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; Blesta)');
+        // Bound API calls so a stalled provider request cannot hold a Blesta page/cron indefinitely.
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         if (Configure::get('Blesta.curl_verify_ssl')) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
