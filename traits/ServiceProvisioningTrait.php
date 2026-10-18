@@ -323,8 +323,9 @@ trait ServiceProvisioningTrait
             return;
         }
 
-        // Provider changes require an explicit module-provisioning signal.
-        // The checkout review path is blocked above even if Blesta sends true.
+        // Blesta's native queued-service-change processor calls this method after
+        // payment when "Queue Service Changes Until Paid" is enabled for the client group.
+        // Only mutate OrderBox when Blesta explicitly requests module execution.
         $useModule = array_key_exists('use_module', $vars)
             && ($vars['use_module'] === 'true' || $vars['use_module'] === true || $vars['use_module'] === 1 || $vars['use_module'] === '1');
         if ($useModule && ($addAccounts !== 0 || $addBlocks !== 0)) {
