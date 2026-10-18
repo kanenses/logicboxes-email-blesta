@@ -4,7 +4,7 @@ Independent Blesta module for ResellerClub / LogicBoxes **Business Email** and *
 
 ## Refactoring branch status
 
-This branch reorganizes the latest implementation from `main` into five traits without intentionally changing the module's service lifecycle or API behavior. The source of truth for this extraction is `main` at commit `8ff0230ed639cdb2171885c5d0caf79931adcd70` (functional module file blob `6bbf2bbff0e2f1ae46f5fca14f5fd08a6dd31990`).
+This branch organizes the implementation into five traits and corrects service-change payment handling by removing the module's custom invoice-aware deferral logic. Payment deferral is delegated to Blesta's native **Queue Service Changes Until Paid** setting, which must be enabled on each client group where changes should wait for payment. The extraction source is `main` at commit `8ff0230ed639cdb2171885c5d0caf79931adcd70` (module version 0.6.0).
 
 This is a review/test branch, not a production-ready release. Do not merge or deploy until PHP syntax validation and Blesta/OrderBox sandbox testing have passed.
 
