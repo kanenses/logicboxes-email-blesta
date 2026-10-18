@@ -74,7 +74,6 @@ trait ServiceTabsTrait
                                 // On a confirmed OrderBox order, an unreported storage add-on means
                                 // there are no separately purchased email_storage_5 blocks. Keep the
                                 // import usable for orders whose API details omit zero-quantity add-ons.
-                                $this->logEmailDiagnostic('OrderBox details omitted email_storage_5.quantity during import; treating storage blocks as 0; order=' . $orderIdInput . '; top-level keys=' . implode(',', array_keys($details)));
                                 $blocksRaw = 0;
                             }
                             $productMismatch = ($productInput === 'enterprise_email' && $providerProductKey !== '' && strpos($providerProductKey, 'enterprise') === false)
@@ -123,7 +122,6 @@ trait ServiceTabsTrait
                                         'key' => 'email_sync_pending', 'value' => '1', 'encrypted' => 'false'
                                     ]);
                                     $message = sprintf(Language::_('LogicboxesEmail.msg.order_associated', true), $orderIdInput, $serviceId);
-                                    $this->logEmailDiagnostic('Imported existing OrderBox order ' . $orderIdInput . ' into Blesta service ' . $serviceId . ' (product=' . $productInput . ', accounts=' . (int)$accountsRaw . ', storage_blocks=' . (int)$blocksRaw . ').');
                                 }
                             }
                         }
@@ -579,7 +577,6 @@ trait ServiceTabsTrait
             $this->logApiResponse($api, $response);
 
             if (!$this->isSuccessfulResponse($response)) {
-                $this->logEmailDiagnostic('Mailbox list failed for service ' . (int)($service->id ?? 0) . ', order ' . $orderId . ': ' . $this->responseError($response));
                 $html .= '<div class="alert alert-warning">' . Language::_('LogicboxesEmail.manage.provider_error', true) . '</div>';
                 return $html . '</section>';
             }
@@ -606,7 +603,6 @@ trait ServiceTabsTrait
                 if ($apiAccountCount !== '' && is_numeric($apiAccountCount)) {
                     $purchasedAccounts = (int)$apiAccountCount;
                 } else {
-                    $this->logEmailDiagnostic('Order details did not contain a readable emailaccounts value for order ' . $orderId . '; falling back to email_accounts service field.');
                 }
             }
             if ($purchasedAccounts < count($users)) {
