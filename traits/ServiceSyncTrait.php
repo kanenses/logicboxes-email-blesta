@@ -178,7 +178,6 @@ trait ServiceSyncTrait
 
         if ($serviceId < 1 || $packageId < 1 || $orderId === '' || !$row
             || empty($row->meta->reseller_id) || empty($row->meta->key)) {
-            $this->logEmailDiagnostic('Skipped configurable-option sync because service data is incomplete. service=' . $serviceId . ', package=' . $packageId . ', order=' . ($orderId !== '' ? 'present' : 'missing') . ', row=' . (is_object($row) ? 'present' : 'missing'));
             return false;
         }
 
