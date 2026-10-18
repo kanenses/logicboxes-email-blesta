@@ -23,7 +23,7 @@ trait ServiceTabsTrait
         ];
     }
 
-    public function tabImportOrder($package, $service, array $get = null, array $post = null, array $files = null)
+    public function tabImportOrder($package, $service, ?array $get = null, ?array $post = null, ?array $files = null)
     {
         $post = (array)$post;
         $serviceId = (int)($service->id ?? 0);
@@ -152,7 +152,7 @@ trait ServiceTabsTrait
         return $html;
     }
 
-    public function tabEmailAccounts($package, $service, array $get = null, array $post = null, array $files = null)
+    public function tabEmailAccounts($package, $service, ?array $get = null, ?array $post = null, ?array $files = null)
     {
         $post = (array)$post;
         $fields = $this->serviceFieldsToObject($service->fields ?? []);
@@ -499,7 +499,7 @@ trait ServiceTabsTrait
         return $output;
     }
 
-    public function tabDnsSetup($package, $service, array $get = null, array $post = null, array $files = null)
+    public function tabDnsSetup($package, $service, ?array $get = null, ?array $post = null, ?array $files = null)
     {
         $fields = $this->serviceFieldsToObject($service->fields ?? []);
         $row = $this->getModuleRow($service->module_row_id ?? null);
