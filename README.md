@@ -17,7 +17,7 @@ This is a review/test branch, not a production-ready release. Do not merge or de
 - Password-less SSO to the provider control panel.
 - Automatic OrderBox-to-Blesta reconciliation of mailbox and storage quantities.
 - API credentials remain server-side, and secrets are redacted from module logs.
-- Deferred checkout increases remain guarded by invoice payment checks before provisioning.
+- Service-change payment deferral relies on Blesta's native **Queue Service Changes Until Paid** setting; enable it on each client group that must wait for payment.
 
 ## Code structure
 
@@ -33,7 +33,7 @@ The traits are composed into the same `LogicboxesEmail extends Module` class exp
 
 ## Requirements
 
-- Blesta 5.x / 6.x (the source reference reports module version 0.6.0).
+- Blesta 5.x / 6.x (this branch reports module version 0.6.1).
 - Package configurable options for mailbox quantity and optional extra-storage blocks, matching the names configured in the module.
 
 ## Install and test
@@ -42,8 +42,9 @@ The traits are composed into the same `LogicboxesEmail extends Module` class exp
 2. Install this branch in a **sandbox/test Blesta instance** first.
 3. Confirm the module loads, its version is reported correctly, package options render, and client/admin tabs load.
 4. Exercise service creation, configurable-option changes, mailbox and forwarding management, DNS retrieval, suspension, unsuspension, renewal, and reconciliation.
-5. **Cancellation timing (checked against Blesta source documentation).** `Services::cancel()` schedules cancellation requests for cron processing. `date_canceled='end_of_term'` schedules cancellation at the end of the current term; a future date schedules it for that date; a past date triggers immediate cancellation. This module's `cancelService()` submits LogicBoxes `/delete` when Blesta processes the actual cancellation. For a non-destructive client-portal test, request end-of-term cancellation, then verify in Blesta that it is scheduled and in OrderBox that the order remains active; no `/delete` request should be sent when the request is first submitted. Test actual provider deletion only with a disposable OrderBox order or when deliberately allowing the service to terminate. Do not test immediate cancellation on a service that must remain active.
-6. Inspect Blesta module logs and confirm API credentials/passwords are redacted.
+5. Enable **Queue Service Changes Until Paid** on the test client's group. Submit a quantity upgrade and confirm OrderBox is unchanged before payment; after paying the invoice and the native service-change cron runs, confirm the provider quantity is updated. Repeat with the setting disabled only when immediate provisioning is intended.
+6. **Cancellation timing (checked against Blesta source documentation).** `Services::cancel()` schedules cancellation requests for cron processing. `date_canceled='end_of_term'` schedules cancellation at the end of the current term; a future date schedules it for that date; a past date triggers immediate cancellation. This module's `cancelService()` submits LogicBoxes `/delete` when Blesta processes the actual cancellation. For a non-destructive client-portal test, request end-of-term cancellation, then verify in Blesta that it is scheduled and in OrderBox that the order remains active; no `/delete` request should be sent when the request is first submitted. Test actual provider deletion only with a disposable OrderBox order or when deliberately allowing the service to terminate. Do not test immediate cancellation on a service that must remain active.
+7. Inspect Blesta module logs and confirm API credentials/passwords are redacted.
 
 Do not uninstall and reinstall a module row that already has services assigned.
 
