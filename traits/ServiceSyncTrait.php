@@ -13,8 +13,7 @@ trait ServiceSyncTrait
 
     public function upgrade($current_version)
     {
-        // Always ensure the task exists and is enabled when upgrading from any
-        // previous 0.5.x version, including installations already on 0.5.8.
+        // Ensure the OrderBox reconciliation task exists and is enabled on upgrade.
         $this->registerSyncCronTask();
     }
 
