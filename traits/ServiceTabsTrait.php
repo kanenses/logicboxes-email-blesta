@@ -269,7 +269,7 @@ trait ServiceTabsTrait
                         // If a stored customer ID was present but search-by-username did not
                         // return it, ask OrderBox for that customer's authoritative details.
                         if ($customerId !== '') {
-                            $customerDetails = $api->submit('customers/details', ['customer-id' => $customerId], 'GET');
+                            $customerDetails = $api->submit('customers/details-by-id', ['customer-id' => $customerId], 'GET');
                             $this->logApiResponse($api, $customerDetails);
                             if ($this->isSuccessfulResponse($customerDetails)) {
                                 $details = $customerDetails->response();
