@@ -79,7 +79,6 @@ trait ServiceSyncTrait
         if ($key !== 'sync_orderbox_services') {
             return;
         }
-        $this->logEmailDiagnostic('Cron sync_orderbox_services started.');
         try {
             Loader::loadModels($this, ['Services']);
             if (!method_exists($this->Services, 'getAll')) {
@@ -106,8 +105,6 @@ trait ServiceSyncTrait
                     else $this->logEmailDiagnostic('Could not clear email_sync_pending for service ' . $serviceId . '; it will be retried.');
                 }
             }
-            // A normal cron completion is module activity, not a system error.
-            $this->log('OrderBox scheduled reconciliation', 'Finished; pending checked=' . $checked . ', synchronized=' . $synced . '.', 'output', true);
         } catch (Throwable $e) {
             $this->logEmailDiagnostic('Scheduled OrderBox reconciliation failed: ' . $e->getMessage());
         }
@@ -223,13 +220,7 @@ trait ServiceSyncTrait
                 || ($actionType !== '' && in_array($normalizedActionCompleted, ['false', '0', 'no'], true))
                 || ($actionType !== '' && $normalizedActionStatus === '' && $normalizedActionCompleted === '');
             if ($hasPendingAction && !in_array($normalizedActionStatus, $completedActionStatuses, true)) {
-                $this->logEmailDiagnostic(
-                    'Skipped configurable-option sync for service ' . $serviceId
-                    . ': OrderBox action still pending (actiontype=' . (string)$actionType
-                    . ', actionstatus=' . (string)$actionStatus
-                    . ', actioncompleted=' . (string)$actionCompleted
-                    . '). The sync will be retried automatically the next time the client/admin service tabs are loaded.'
-                );
+                // An outstanding provider action is expected to be retried on the next cron run.
                 return false;
             }
 
@@ -238,7 +229,7 @@ trait ServiceSyncTrait
                 'numberofemailaccounts', 'number-of-email-accounts'
             ]);
             if ($providerAccounts === '' || !is_numeric($providerAccounts) || (int)$providerAccounts < 1) {
-                $this->logEmailDiagnostic('Could not read contracted emailaccounts from OrderBox details for service ' . $serviceId . '; response=' . json_encode($details));
+                $this->logEmailDiagnostic('Could not read contracted mailbox quantity from OrderBox for service ' . $serviceId . '.');
                 return false;
             }
             $providerAccounts = (int)$providerAccounts;
@@ -255,9 +246,7 @@ trait ServiceSyncTrait
                 if ($providerBlocks === null && array_key_exists('addons', $detailsArray)
                     && is_array($detailsArray['addons']) && count($detailsArray['addons']) === 0) {
                     $providerBlocks = 0;
-                    $this->logEmailDiagnostic('OrderBox returned an empty addons list for service ' . $serviceId . '; treating email_storage_5 quantity as 0.');
                 } else {
-                    $this->logEmailDiagnostic('OrderBox details did not expose email_storage_5.quantity for service ' . $serviceId . '; details=' . json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
                 }
             }
 
@@ -320,11 +309,10 @@ trait ServiceSyncTrait
                 }
             }
             if (!$optionIds['mailboxes']) {
-                $this->logEmailDiagnostic('Could not identify the Mailboxes configurable option for package ' . $packageId . '; package option structure: ' . json_encode($packageOptions));
+                $this->logEmailDiagnostic('Could not identify the Mailboxes configurable option for package ' . $packageId . '.');
                 return false;
             }
             if ($providerBlocks !== null && !$optionIds['storage']) {
-                $this->logEmailDiagnostic('Could not identify the Extra storage configurable option for package ' . $packageId . '; storage quantity will not be synced.');
             }
 
             $changed = false;
@@ -346,7 +334,6 @@ trait ServiceSyncTrait
                 }
             }
             if (!$changed) return true;
-            $this->logEmailDiagnostic('Updating Blesta configurable options for service ' . $serviceId . ' from OrderBox: ' . json_encode($changes) . '; options=' . json_encode($configOptions));
             // Do not pass bypass_module=true here. Blesta's Services::edit() only
             // calls setServiceOptions() inside its module-processing branch, so the
             // bypass would skip persistence of configurable options altogether.
@@ -357,9 +344,8 @@ trait ServiceSyncTrait
             ]);
             if (!$result) {
                 $errors = method_exists($this->Services, 'errors') ? $this->Services->errors() : [];
-                $this->logEmailDiagnostic('Blesta rejected configurable-option sync for service ' . $serviceId . '. Result=' . var_export($result, true) . '; service_errors=' . json_encode($errors) . '; input_errors=' . json_encode(method_exists($this->Input, 'errors') ? $this->Input->errors() : []));
+                $this->logEmailDiagnostic('Blesta rejected configurable-option sync for service ' . $serviceId . '.');
             } else {
-                $this->logEmailDiagnostic('Synchronized Blesta configurable options for service ' . $serviceId . ' from OrderBox. Result=' . var_export($result, true));
                 return true;
             }
             return false;
