@@ -310,7 +310,7 @@ trait LogicboxesApiSupportTrait
         return new LogicboxesApi($resellerId, $key, $sandbox);
     }
 
-    private function logEmailDiagnostic($message)
+    private function logEmailDiagnostic($message, $level = 'error')
     {
         try {
             $message = substr((string)$message, 0, 1000);
@@ -328,7 +328,11 @@ trait LogicboxesApiSupportTrait
             );
 
             $logger = $this->getFromContainer('logger');
-            $logger->error('[LogicBoxes Email] ' . $message);
+            if ($level === 'warning' && method_exists($logger, 'warning')) {
+                $logger->warning('[LogicBoxes Email] ' . $message);
+            } else {
+                $logger->error('[LogicBoxes Email] ' . $message);
+            }
         } catch (Throwable $e) {
             // Do not mask the original connection failure.
         }
