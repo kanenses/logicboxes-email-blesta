@@ -269,7 +269,6 @@ trait ServiceProvisioningTrait
                 $hasPendingAction = in_array($actionStatus, $pendingActionStatuses, true)
                     || ($actionType !== '' && $actionCompleted === 'false');
                 if ($hasPendingAction) {
-                    $this->logEmailDiagnostic('Rejected configurable-option edit for service ' . (int)($service->id ?? 0) . ': OrderBox action still in progress (actiontype=' . $actionType . ', actionstatus=' . $actionStatus . ', actioncompleted=' . $actionCompleted . ').');
                     $this->setModuleError('order_action_pending', Language::_('LogicboxesEmail.provision.operation_pending', true));
                     return;
                 }
@@ -285,7 +284,6 @@ trait ServiceProvisioningTrait
                 if (is_numeric($storageQty) && (int)$storageQty >= 0) {
                     $currentBlocks = (int)$storageQty;
                 } else {
-                    $this->logEmailDiagnostic('OrderBox details did not include addon email_storage_5 quantity for service ' . (int)($service->id ?? 0) . '; using stored storage field as fallback.');
                 }
             } catch (Throwable $e) {
                 $this->logEmailDiagnostic('Could not read OrderBox order details before configurable-option change: ' . $e->getMessage());
