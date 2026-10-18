@@ -1,5 +1,5 @@
 {
-  "version": "0.5.8",
+  "version": "0.6.1",
   "type": "module",
   "name": "KanumHost LogicBoxes Email",
   "description": "KanumHost Email Hosting integration for LogicBoxes HTTP API",
