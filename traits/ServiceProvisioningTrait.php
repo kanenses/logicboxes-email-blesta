@@ -211,71 +211,12 @@ trait ServiceProvisioningTrait
 
     public function editService($package, $service, array $vars = null, $parent_package = null, $parent_service = null)
     {
-$this->logEmailDiagnostic(
-    'editService called: service_id=' . (int)($service->id ?? 0)
-    . '; vars=' . json_encode($vars)
-);
         $vars = (array)$vars;
         $fields = $this->serviceFieldsToObject($service->fields);
         $product = (string)($fields->email_product ?? ($package->meta->email_product ?? 'business_email'));
         $orderId = (string)($fields->email_order_id ?? '');
         $currentAccounts = (int)($fields->email_accounts ?? 0);
         $currentBlocks = (int)($fields->email_storage_blocks ?? 0);
-
-        // Blesta calls Services::edit from ClientServices::review while the
-        // customer is still on the Review and Pay checkout step. In this path
-        // use_module=true does NOT mean that payment has been completed.
-        // Never send provisioning requests to OrderBox from this call stack.
-        $isReviewCheckout = false;
-        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 12) as $frame) {
-            if (($frame['class'] ?? '') === 'Blesta\\App\\Controller\\ClientServices'
-                && ($frame['function'] ?? '') === 'review') {
-                $isReviewCheckout = true;
-                break;
-            }
-            // Some Blesta versions/controllers expose the short class name.
-            if (($frame['class'] ?? '') === 'ClientServices'
-                && ($frame['function'] ?? '') === 'review') {
-                $isReviewCheckout = true;
-                break;
-            }
-        }
-        if ($isReviewCheckout) {
-            // Preserve requested quantities separately; actual fields remain the provider state.
-            $requestedAccounts = $this->getPackageConfigOptionValue(
-                $package, $vars,
-                ['logicboxes_email_mailboxes', 'mailboxes', 'mailbox', 'email accounts', 'number of email accounts', 'no-of-accounts', 'no_of_accounts']
-            );
-            $requestedBlocks = $this->getPackageConfigOptionValue(
-                $package, $vars,
-                ['logicboxes_email_extra_storage', 'extra storage (5 gb blocks)', 'extra storage', 'storage blocks', 'no-of-storage5-blocks', 'no_of_storage5_blocks']
-            );
-            $requestedAccounts = $requestedAccounts === null ? $currentAccounts : (int)$requestedAccounts;
-            $requestedBlocks = $requestedBlocks === null ? $currentBlocks : max(0, (int)$requestedBlocks);
-            // Keep the time of the FIRST pending request so that every invoice
-            // issued since then must be paid before an increase is provisioned.
-            $hasChange = ($requestedAccounts !== $currentAccounts || $requestedBlocks !== $currentBlocks);
-            $prevSince = trim((string)($fields->email_pending_since ?? ''));
-            $pendingSince = !$hasChange ? ''
-                : (($this->isTruthyFlag($fields->email_pending_change ?? '0') && $prevSince !== '') ? $prevSince : gmdate('Y-m-d H:i:s'));
-            $this->logEmailDiagnostic('Deferred OrderBox provisioning during ClientServices::review for service '
-                . (int)($service->id ?? 0) . '; target accounts=' . $requestedAccounts . ', target storage blocks=' . $requestedBlocks . '.');
-            return [
-                ['key' => 'email_domain', 'value' => (string)($fields->email_domain ?? ''), 'encrypted' => 0],
-                ['key' => 'email_product', 'value' => $product, 'encrypted' => 0],
-                ['key' => 'email_order_id', 'value' => $orderId, 'encrypted' => 0],
-                ['key' => 'email_customer_id', 'value' => (string)($fields->email_customer_id ?? ''), 'encrypted' => 0],
-                ['key' => 'email_customer_username', 'value' => (string)($fields->email_customer_username ?? ''), 'encrypted' => 0],
-                ['key' => 'email_customer_password', 'value' => (string)($fields->email_customer_password ?? ''), 'encrypted' => 1],
-                ['key' => 'email_accounts', 'value' => (string)$currentAccounts, 'encrypted' => 0],
-                ['key' => 'email_storage_blocks', 'value' => (string)$currentBlocks, 'encrypted' => 0],
-                ['key' => 'email_pending_accounts', 'value' => (string)$requestedAccounts, 'encrypted' => 0],
-                ['key' => 'email_pending_storage_blocks', 'value' => (string)$requestedBlocks, 'encrypted' => 0],
-                ['key' => 'email_pending_change', 'value' => (($requestedAccounts !== $currentAccounts || $requestedBlocks !== $currentBlocks) ? '1' : '0'), 'encrypted' => 0],
-                ['key' => 'email_pending_since', 'value' => $pendingSince, 'encrypted' => 0],
-                ['key' => 'email_sync_pending', 'value' => (string)($fields->email_sync_pending ?? '0'), 'encrypted' => 0]
-            ];
-        }
 
         // null means the option was not part of this request: keep the current value.
         // Blesta sends configurable options as configoptions[OPTION_ID] = selected value.
@@ -502,10 +443,6 @@ $this->logEmailDiagnostic(
             ['key' => 'email_customer_password', 'value' => (string)($fields->email_customer_password ?? ''), 'encrypted' => 1],
             ['key' => 'email_accounts', 'value' => (string)$currentAccounts, 'encrypted' => 0],
             ['key' => 'email_storage_blocks', 'value' => (string)$currentBlocks, 'encrypted' => 0],
-            ['key' => 'email_pending_accounts', 'value' => '', 'encrypted' => 0],
-            ['key' => 'email_pending_storage_blocks', 'value' => '', 'encrypted' => 0],
-            ['key' => 'email_pending_change', 'value' => '0', 'encrypted' => 0],
-            ['key' => 'email_pending_since', 'value' => '', 'encrypted' => 0],
             ['key' => 'email_sync_pending', 'value' => $syncPending ? '1' : '0', 'encrypted' => 0]
         ];
     }
@@ -522,10 +459,7 @@ $this->logEmailDiagnostic(
 
 	public function cancelService($package, $service, $parent_package = null, $parent_service = null)
 	{
-		// Temporary diagnostic: prove whether Blesta reaches this module hook.
-		$this->logEmailDiagnostic('cancelService entered: service_id=' . (int)($service->id ?? 0));
 		$fields = $this->serviceFieldsToObject($service->fields);
-		$this->logEmailDiagnostic('cancelService fields: service_id=' . (int)($service->id ?? 0) . '; order_id=' . (string)($fields->email_order_id ?? '(missing)') . '; product=' . (string)($fields->email_product ?? '(default business_email)'));
 
 		if (empty($fields->email_order_id)) {
 			$this->setModuleError(
@@ -555,8 +489,6 @@ $this->logEmailDiagnostic(
 			($fields->email_product ?? 'business_email') === 'enterprise_email'
 		) ? 'enterpriseemail/us' : 'eelite/us';
 
-		$this->logEmailDiagnostic('cancelService submitting provider delete: service_id=' . (int)($service->id ?? 0) . '; order_id=' . (string)$fields->email_order_id . '; endpoint=' . $prefix . '/delete');
-
 		$response = $api->submit(
 			$prefix . '/delete',
 			[
@@ -566,7 +498,6 @@ $this->logEmailDiagnostic(
 		);
 
 		$this->logApiResponse($api, $response);
-		$this->logEmailDiagnostic('cancelService provider delete response: service_id=' . (int)($service->id ?? 0) . '; order_id=' . (string)$fields->email_order_id . '; response_status=' . (string)$response->status());
 
 		if (!$this->isSuccessfulResponse($response)) {
 			$this->setModuleError(
