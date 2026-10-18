@@ -192,7 +192,6 @@ trait ServiceSyncTrait
             $response = $api->submit($prefix . '/details', ['order-id' => $orderId], 'GET');
             $this->logApiResponse($api, $response);
             if (!$this->isSuccessfulResponse($response)) {
-                $this->logEmailDiagnostic('OrderBox details request failed during configurable-option sync for service ' . $serviceId . ': ' . $this->responseError($response));
                 return false;
             }
 
