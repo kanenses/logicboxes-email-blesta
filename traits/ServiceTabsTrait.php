@@ -502,12 +502,15 @@ trait ServiceTabsTrait
             popup.document.open();
             popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KanumHost</title><style>body{margin:0;background:#f5f7fa;color:#202938;font:15px/1.5 Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center}.card{box-sizing:border-box;width:min(440px,calc(100% - 32px));padding:32px;background:#fff;border:1px solid #e3e7ed;border-radius:12px;box-shadow:0 8px 28px rgba(20,35,55,.08);text-align:center}.brand{font-weight:700;font-size:20px;color:#172b4d;margin-bottom:20px}.spinner{width:28px;height:28px;margin:0 auto 18px;border:3px solid #dce3ec;border-top-color:#2463eb;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:18px;margin:0 0 10px}p{margin:0;color:#596579}button{margin-top:20px;padding:9px 16px;border:0;border-radius:6px;background:#245de8;color:white;cursor:pointer}</style></head><body><main class="card"><div class="brand">KanumHost</div><div class="spinner" id="spinner"></div><h1 id="title">A ligar ao painel…</h1><p id="message">Estamos a preparar o acesso seguro. Aguarda, por favor.</p><button id="close" type="button" hidden>Fechar janela</button></main></body></html>');
             popup.document.close();
-            return {
+            var ui = {
                 title: popup.document.getElementById('title'),
                 message: popup.document.getElementById('message'),
                 spinner: popup.document.getElementById('spinner'),
                 close: popup.document.getElementById('close')
             };
+            if (ui.title) ui.title.textContent = title;
+            if (ui.message) ui.message.textContent = message;
+            return ui;
         } catch (error) {
             return null;
         }
