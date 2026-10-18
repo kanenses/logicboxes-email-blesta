@@ -78,7 +78,7 @@ trait ServiceProvisioningTrait
         return $walk($vars) ?? '';
     }
 
-    public function validateService($package, array $vars = null)
+    public function validateService($package, ?array $vars = null)
     {
         $vars = (array)$vars;
         $domain = $this->getDomainFromVars($vars);
@@ -102,7 +102,7 @@ trait ServiceProvisioningTrait
         return true;
     }
 
-    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
+    public function addService($package, ?array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
     {
         $vars = (array)$vars;
         $row = $this->getModuleRow($package->module_row);
@@ -209,7 +209,7 @@ trait ServiceProvisioningTrait
         }
     }
 
-    public function editService($package, $service, array $vars = null, $parent_package = null, $parent_service = null)
+    public function editService($package, $service, ?array $vars = null, $parent_package = null, $parent_service = null)
     {
         $vars = (array)$vars;
         $fields = $this->serviceFieldsToObject($service->fields);
