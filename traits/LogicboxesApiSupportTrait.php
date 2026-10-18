@@ -315,10 +315,10 @@ trait LogicboxesApiSupportTrait
         try {
             $message = substr((string)$message, 0, 1000);
 
-            // Sanitize common secret formats and client email addresses before logs are persisted.
+            // Redact common secret assignments and client email addresses.
             $message = preg_replace(
-                '/(["\\']?(?:api-key|auth-userid|auth-token|auth_token|passwd|password|token)["\\']?\\s*[:=]\\s*["\\']?)[^"\\'\\s&,;}]+/i',
-                '$1[REDACTED]',
+                '/(?:api-key|auth-userid|auth-token|auth_token|passwd|password|token)\\s*[:=]\\s*[^,\\s&;}]+/i',
+                '[secret-redacted]',
                 $message
             );
             $message = preg_replace(
@@ -332,4 +332,5 @@ trait LogicboxesApiSupportTrait
         } catch (Throwable $e) {
             // Do not mask the original connection failure.
         }
-    }}
+    }
+}
